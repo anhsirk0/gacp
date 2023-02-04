@@ -1,4 +1,4 @@
-# Photomosaic Creator
+# gacp
 git add, commit and push in one go.
 
 ## About
