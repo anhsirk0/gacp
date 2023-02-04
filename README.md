@@ -22,3 +22,25 @@ EXAMPLE:
 	gacp "updated README" -f README.md
 	gacp "Pushing all except new-file.pl" -e new-file.pl
 ```
+
+## Examples
+```text
+$ gacp "First Commit" -dry
+Added files:
+	gacp.pl	(new)
+
+git add gacp.pl
+git commit -m "First Commit"
+git push
+```
+
+```text
+$ gacp "pushing all" -dry
+Added files:
+	gacp.pl 	(modified)
+	README.md	(new)
+
+git add -A
+git commit -m "pushing all"
+git push
+```
