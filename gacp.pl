@@ -102,7 +102,7 @@ sub get_info (\@\@) {
 
     # parse git status porcelain
     my $git_status = `git status --porcelain`;
-    
+
     foreach my $line (split "\n", $git_status) {
         my ($status, $file_name) = split " ", $line;
         if (grep /^$file_name$/, @{$ref_files_to_exclude}) {
