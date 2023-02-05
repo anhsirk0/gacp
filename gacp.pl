@@ -6,6 +6,7 @@ use strict;
 use Term::ANSIColor;
 use File::Spec::Functions qw(abs2rel);
 use File::Basename qw(fileparse);
+use Cwd qw(getcwd);
 use Getopt::Long;
 
 my @files_to_add     = ();
@@ -55,58 +56,70 @@ sub print_help {
 }
 
 sub print_file {
-    my ($status, $file_name) = @_;
+    my ($status, $file_name, $color) = @_;
 
     if ($status eq "??") {
+        $color = $color || $NEW_COLOR;
         printf(
-            "\t%-25s %s\n",
-            colored("$file_name", $NEW_COLOR), colored("(new)", $NEW_COLOR)
+            "\t%-40s %s\n",
+            colored("$file_name", $color), colored("(new)", $color)
             )
     } elsif ($status eq "D") {
+        $color = $color || $DEL_COLOR;
         printf(
-            "\t%-25s %s\n",
-            colored("$file_name", $DEL_COLOR), colored("(deleted)", $DEL_COLOR)
+            "\t%-40s %s\n",
+            colored("$file_name", $color), colored("(deleted)", $color)
             )
     } elsif ($status eq "M") {
+        $color = $color || $MOD_COLOR;
         printf(
-            "\t%-25s %s\n",
-            colored("$file_name", $MOD_COLOR), colored("(modified)", $MOD_COLOR)
+            "\t%-40s %s\n",
+            colored("$file_name", $color), colored("(modified)", $color)
             )
     }
 }
 
-sub print_files_to_exclude {
-    print "Excluded files:\n\t";
-    print colored(join("\n\t", @files_to_exclude), $EXC_COLOR) . "\n\n";
+sub get_top_level_rel_path {
+    my @files = @_;
+    my @file_paths = ();
+    foreach my $f (@files) {
+        chomp(my $top_level = `git rev-parse --show-toplevel`);
+        my ($repo_dir) = fileparse($top_level);
+        my $top_level_rel_path = abs2rel(getcwd() . "/" . $f, $top_level);
+        $top_level_rel_path =~ s/\.\.\/$repo_dir//;
+        push(@file_paths, $top_level_rel_path);
+    }
+
+    return @file_paths;
 }
 
-
-sub get_added_files_and_status {
+sub get_info (\@\@) {
+    my ($ref_files_to_add, $ref_files_to_exclude) = @_;
     # these files will be git added # (@files_to_add - @files_to_exclude)
-    my @added_files_and_status = ();
+    my @added_files_info = ();
+    my @excluded_files_info = ();
 
 
     # parse git status porcelain
     my $git_status = `git status --porcelain`;
-
+    
     foreach my $line (split "\n", $git_status) {
         my ($status, $file_name) = split " ", $line;
-
-        my $top_level = `git rev-parse --show-toplevel`;
-        my ($repo_dir) = fileparse($top_level);
-        my $rel_path = abs2rel($top_level);
-
-        $rel_path =~ s/\.\.\/$repo_dir//;
-
-        if (grep /^[.\/]*$file_name$/, @files_to_exclude) { next };
-        if (@files_to_add[0] ne "-A" && !(grep /^$file_name$/, @files_to_add)) {
+        if (grep /^$file_name$/, @{$ref_files_to_exclude}) {
+            push(@excluded_files_info, [$status, $file_name]);
+            next;
+        };
+        if (
+            @files_to_add[0] ne "-A" &&
+            !(grep /^$file_name$/, @{$ref_files_to_add})
+            ) {
             next
         }
 
-        push(@added_files_and_status, [$status, $file_name]);
+        push(@added_files_info, [$status, $file_name]);
     }
 
-    return @added_files_and_status;
+    return (\@added_files_info, \@excluded_files_info);
 }
 
 sub main {
@@ -135,24 +148,34 @@ sub main {
     my $git_message = $ARGV[0] || "updated README";
 
     unless (@files_to_add) { $files_to_add[0] = "-A" }
+    my @parsed_files_to_add = get_top_level_rel_path(@files_to_add);
+    my @parsed_files_to_exclude = get_top_level_rel_path(@files_to_exclude);
 
-    my @added_files_and_status = get_added_files_and_status();
+    my ($added_files_info, $excluded_files_info) = get_info(
+        @parsed_files_to_add,
+        @parsed_files_to_exclude
+        );
+
     my @added_files = ();
-
-    if (scalar(@added_files_and_status) > 0) {
+    if (scalar(@$added_files_info)) {
         print "Added files:\n";
-        for (@added_files_and_status) {
+        for (@$added_files_info) {
             print_file($_->[0], $_->[1]);
             push(@added_files, $_->[1]);
         }
         print "\n";
-    }
-
-    unless(scalar(@added_files)) {
+    } else {
         print "Nothing added\n";
         return;
     }
-    if (scalar(@files_to_exclude) > 0) { print_files_to_exclude() }
+
+    if (scalar(@$excluded_files_info) > 0) {
+        print "Excluded files:\n";
+        for (@$excluded_files_info) {
+            print_file($_->[0], $_->[1], $EXC_COLOR);
+        }
+        print "\n";
+    }
 
     if ($dry_run) {
         print "git add " . join(" ", @added_files) . "\n";
