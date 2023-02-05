@@ -4,14 +4,14 @@
 
 use strict;
 use Term::ANSIColor;
+use File::Spec::Functions qw(abs2rel);
+use File::Basename qw(fileparse);
 use Getopt::Long;
 
 my @files_to_add     = ();
 my @files_to_exclude = ();
 my $dry_run;
 my $help;
-# these files will be git added # (@files_to_add - @files_to_exclude)
-my @added_files = ();
 
 # color constants
 my $MOD_COLOR = "bright_green"; # for modified files
@@ -54,8 +54,37 @@ sub print_help {
         );
 }
 
-sub print_files_to_add {
-    print "Added files:\n";
+sub print_file {
+    my ($status, $file_name) = @_;
+
+    if ($status eq "??") {
+        printf(
+            "\t%-25s %s\n",
+            colored("$file_name", $NEW_COLOR), colored("(new)", $NEW_COLOR)
+            )
+    } elsif ($status eq "D") {
+        printf(
+            "\t%-25s %s\n",
+            colored("$file_name", $DEL_COLOR), colored("(deleted)", $DEL_COLOR)
+            )
+    } elsif ($status eq "M") {
+        printf(
+            "\t%-25s %s\n",
+            colored("$file_name", $MOD_COLOR), colored("(modified)", $MOD_COLOR)
+            )
+    }
+}
+
+sub print_files_to_exclude {
+    print "Excluded files:\n\t";
+    print colored(join("\n\t", @files_to_exclude), $EXC_COLOR) . "\n\n";
+}
+
+
+sub get_added_files_and_status {
+    # these files will be git added # (@files_to_add - @files_to_exclude)
+    my @added_files_and_status = ();
+
 
     # parse git status porcelain
     my $git_status = `git status --porcelain`;
@@ -63,28 +92,21 @@ sub print_files_to_add {
     foreach my $line (split "\n", $git_status) {
         my ($status, $file_name) = split " ", $line;
 
+        my $top_level = `git rev-parse --show-toplevel`;
+        my ($repo_dir) = fileparse($top_level);
+        my $rel_path = abs2rel($top_level);
+
+        $rel_path =~ s/\.\.\/$repo_dir//;
+
         if (grep /^[.\/]*$file_name$/, @files_to_exclude) { next };
         if (@files_to_add[0] ne "-A" && !(grep /^$file_name$/, @files_to_add)) {
             next
         }
 
-        if ($status eq "??") {
-            print colored("\t$file_name\t(new)", $NEW_COLOR) . "\n";
-        } elsif ($status eq "D") {
-            print colored("\t$file_name\t(deleted)", $DEL_COLOR) . "\n";
-        } elsif ($status eq "M") {
-            print colored("\t$file_name\t(modified)", $MOD_COLOR) . "\n";
-        }
-
-        push(@added_files, $file_name);
+        push(@added_files_and_status, [$status, $file_name]);
     }
-    print "\n";
-}
 
-sub print_files_to_exclude {
-    print "Excluded files:\n\t";
-    print colored(join("\n\t", @files_to_exclude), $EXC_COLOR) . "\n";
-    print "\n";
+    return @added_files_and_status;
 }
 
 sub main {
@@ -100,31 +122,50 @@ sub main {
         exit;
     }
 
-    unless (`git rev-parse --is-inside-work-tree` eq "true\n") {
-        print "Not a git repository";
-        return;
+    unless (`git rev-parse --is-inside-work-tree 2> /dev/null` eq "true\n") {
+        print "Not in a git repository\n";
+        exit;
     }
 
+    # If nothing to commit
     unless (`git status --porcelain`) {
         system("git status");
         return;
     }
-
-unless (@files_to_add) { $files_to_add[0] = "-A" }
-    unless (@files_to_add[0] eq @files_to_exclude[0]) { print_files_to_add() }
-
-    if (scalar(@files_to_exclude) > 0) { print_files_to_exclude() }
-
     my $git_message = $ARGV[0] || "updated README";
+
+    unless (@files_to_add) { $files_to_add[0] = "-A" }
+
+    my @added_files_and_status = get_added_files_and_status();
+    my @added_files = ();
+
+    if (scalar(@added_files_and_status) > 0) {
+        print "Added files:\n";
+        for (@added_files_and_status) {
+            print_file($_->[0], $_->[1]);
+            push(@added_files, $_->[1]);
+        }
+        print "\n";
+    }
+
+    unless(scalar(@added_files)) {
+        print "Nothing added\n";
+        return;
+    }
+    if (scalar(@files_to_exclude) > 0) { print_files_to_exclude() }
 
     if ($dry_run) {
         print "git add " . join(" ", @added_files) . "\n";
         print "git commit -m \"$git_message\" \n";
         print "git push\n";
     } else {
-        system("git add " . join(" ", @added_files));
-        system("git commit -m \"$git_message\"");
-        system("git push");
+        my $prev_return = system("git add " . join(" ", @added_files));
+        if ($prev_return eq "0") {
+            $prev_return = system("git commit -m \"$git_message\"");
+        }
+        if ($prev_return eq "0") {
+            system("git push");
+        }
     }
 }
 
