@@ -15,6 +15,10 @@ my @files_to_add     = ();
 my @files_to_exclude = ();
 my $dry_run;
 my $help;
+my $list;
+
+# `git status --porcelain`
+my $git_status_porcelain;
 
 # color constants
 my $MOD_COLOR = "bright_green"; # for modified files
@@ -119,6 +123,16 @@ sub get_top_level_rel_path {
     return @file_paths;
 }
 
+# Print $git_status_porcelain but relative path to current dir
+sub print_relative_git_status_porcelain {
+    foreach my $line (split("\n", $git_status_porcelain)) {
+        my ($status, $file_path) = split(" ", $line);
+        chomp(my $top_level = `git rev-parse --show-toplevel`);
+        my $rel_path = abs2rel($top_level . "/" . $file_path);
+        print $rel_path . "\n";
+    }    
+}
+
 # Return reference to 2 arrays containing info about added & excluded files
 # after parsing `git status --porcelain`
 # Params:
@@ -128,7 +142,7 @@ sub get_top_level_rel_path {
 #    `git status --porcelain` = ?? new-file.pl, M mod-file.pl, D del-file.pl
 #    @files_to_add = ["mod-file.pl", "del-file.pl"]
 #    @files_to_exclude = ["new-file.pl"]
-#    will return =>
+#    will return references to these 2 arrays =>
 #    @files_to_add = [["M", "mod-file.pl"], ["D", "del-file.pl"]]
 #    @files_to_exclude = [["??", "new-file.pl"]]
 sub get_info (\@\@) {
@@ -139,21 +153,19 @@ sub get_info (\@\@) {
 
 
     # parse git status porcelain
-    my $git_status = `git status --porcelain`;
-
-    foreach my $line (split "\n", $git_status) {
-        my ($status, $file_name) = split " ", $line;
-        if (grep /^$file_name$/, @{$ref_files_to_exclude}) {
-            push(@excluded_files_info, [$status, $file_name]);
+    foreach my $line (split "\n", $git_status_porcelain) {
+        my ($status, $file_path) = split(" ", $line);
+        if (grep /^$file_path$/, @{$ref_files_to_exclude}) {
+            push(@excluded_files_info, [$status, $file_path]);
             next;
         };
         if (
             @files_to_add[0] ne "-A" &&
-            !(grep /^$file_name$/, @{$ref_files_to_add})
+            !(grep /^$file_path$/, @{$ref_files_to_add})
             ) {
             next
         }
-        push(@added_files_info, [$status, $file_name]);
+        push(@added_files_info, [$status, $file_path]);
     }
 
     return (\@added_files_info, \@excluded_files_info);
@@ -162,6 +174,7 @@ sub get_info (\@\@) {
 sub main {
     GetOptions (
         "help|h" => \$help,
+        "list|l" => \$list,
         "dry|d" => \$dry_run,
         "files|f=s{1,}" => \@files_to_add,
         "exclude|e=s{1,}" => \@files_to_exclude,
@@ -177,10 +190,18 @@ sub main {
         exit;
     }
 
+    # set $git_status_porcelain
+    chomp($git_status_porcelain = `git status --porcelain`);
+
+    if ($list) {
+        print_relative_git_status_porcelain();
+        exit;
+    }
+
     # If nothing to commit
-    unless (`git status --porcelain`) {
+    unless ($git_status_porcelain) {
         system("git status");
-        return;
+        exit;
     }
     my $git_message = $ARGV[0] || "updated README";
 
@@ -203,7 +224,7 @@ sub main {
         print "\n";
     } else {
         print "Nothing added\n";
-        return;
+        exit;
     }
 
     if (scalar(@$excluded_files_info) > 0) {
