@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
-# wrapper around git-add-commit-push
+# git add, commit and push in one go.
+# https://codeberg.org/anhsirk0/gacp
 
 use strict;
 use Term::ANSIColor;
@@ -9,6 +10,7 @@ use File::Basename qw(fileparse);
 use Cwd qw(getcwd);
 use Getopt::Long;
 
+# for cli args
 my @files_to_add     = ();
 my @files_to_exclude = ();
 my $dry_run;
@@ -21,6 +23,15 @@ my $NEW_COLOR = "bright_cyan";  # for newly created files
 my $EXC_COLOR = "yellow";       # for excluded files
 my $STR_COLOR = "bright_blue";  # for string args
 
+# pretty formatted and colored options for help message
+# params:
+#   short    (short name for option : String)
+#   long     (long name for option : String)
+#   desc     (description for option : String)
+#   args     (option accepts args or not : 0|1)
+#   default  (default arg for otion : String|0)
+# Example return:
+#      short, --long <LONG>     Description [default: Default_arg]\n
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
     my $text = "\t" . colored($short, "green");
@@ -42,7 +53,7 @@ sub print_help {
         format_option("h", "help", "Print help information", 0, 0),
         format_option("d", "dry", "Dry-run (show what will happen)", 0, 0),
         format_option("f", "files", "Files to add (git add)", 1, "-A"),
-        format_option("e", "exclude", "Files to exclude (not commit)", 1, 0),
+        format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
         colored("ARGS:", "yellow"),
         colored("\t<MESSAGE>", "green"),
         "\t\tCommit message [default: \"updated README\"]",
@@ -55,6 +66,14 @@ sub print_help {
         );
 }
 
+# Pretty print file_name based on their status
+# Params:
+#     status     (Status of the file : "??" | "M" | "D")
+#     file_name  (Name of the file : String)
+# Example print:
+#     modified_file.pl     (modified)
+#     newly_created.pl     (new)
+#     deleted_file.pl      (deleted)
 sub print_file {
     my ($status, $file_name, $color) = @_;
 
@@ -79,6 +98,13 @@ sub print_file {
     }
 }
 
+# get paths relative to top-level (root) of the git repository
+# Params:
+#    files   (array of file_names : Array<String>)
+# Returns:
+#    files_path   (array of file_names : Array<String>)
+# Example:
+# ["some-file.pl"] -> ["src/lib/some-file.pl"]
 sub get_top_level_rel_path {
     my @files = @_;
     my @file_paths = ();
@@ -93,6 +119,18 @@ sub get_top_level_rel_path {
     return @file_paths;
 }
 
+# Return reference to 2 arrays containing info about added & excluded files
+# after parsing `git status --porcelain`
+# Params:
+#    ref_files_to_add      (reference to files_to_add array)
+#    ref_files_to_exclude
+# Example:
+#    `git status --porcelain` = ?? new-file.pl, M mod-file.pl, D del-file.pl
+#    @files_to_add = ["mod-file.pl", "del-file.pl"]
+#    @files_to_exclude = ["new-file.pl"]
+#    will return =>
+#    @files_to_add = [["M", "mod-file.pl"], ["D", "del-file.pl"]]
+#    @files_to_exclude = [["??", "new-file.pl"]]
 sub get_info (\@\@) {
     my ($ref_files_to_add, $ref_files_to_exclude) = @_;
     # these files will be git added # (@files_to_add - @files_to_exclude)
@@ -115,7 +153,6 @@ sub get_info (\@\@) {
             ) {
             next
         }
-
         push(@added_files_info, [$status, $file_name]);
     }
 
