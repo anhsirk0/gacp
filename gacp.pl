@@ -48,13 +48,12 @@ sub format_option {
 sub print_help {
     # This is a mess
     printf(
-        "%s\n%s\n\n%s\n%s\n\n%s \n%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
-        colored("gacp", "green"),
-        "git add, commit and push in one go.",
-        colored("USAGE:", "yellow"),
-        "\tgacp [ARGS] [OPTIONS]",
+        "%s\n\n%s\n\n%s \n%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
+        colored("gacp", "green") . "\n" . "git add, commit & push in one go.",
+        colored("USAGE:", "yellow") . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", "yellow"),
         format_option("h", "help", "Print help information", 0, 0),
+        format_option("l", "list", "List new/modified/deleted files", 0, 0),
         format_option("d", "dry", "Dry-run (show what will happen)", 0, 0),
         format_option("f", "files", "Files to add (git add)", 1, "-A"),
         format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
