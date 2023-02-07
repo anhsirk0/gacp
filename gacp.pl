@@ -81,7 +81,8 @@ sub print_help {
 sub print_file {
     my ($status, $file_name, $color) = @_;
     my $available_cols = `tput cols`;
-    if ($?) { $available_cols = 60; } # if `tput cols` return non-zero exit status code
+    # if `tput cols` return non-zero exit status code
+    if ($?) { $available_cols = 60; }
     $available_cols = int($available_cols);
 
     if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
