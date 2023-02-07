@@ -19,6 +19,7 @@ my $list;
 
 # `git status --porcelain`
 my $git_status_porcelain;
+my $COLS = 72;
 
 # color constants
 my $MOD_COLOR = "bright_green"; # for modified files
@@ -79,23 +80,28 @@ sub print_help {
 #     deleted_file.pl      (deleted)
 sub print_file {
     my ($status, $file_name, $color) = @_;
+    my $available_cols = `tput cols`;
+    if ($?) { $available_cols = 60; } # if `tput cols` return non-zero exit status code
+    $available_cols = int($available_cols);
+
+    if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
 
     if ($status eq "??") {
         $color = $color || $NEW_COLOR;
         printf(
-            "\t%-40s %s\n",
+            "    %-" . $COLS . "s %s\n",
             colored("$file_name", $color), colored("(new)", $color)
             )
     } elsif ($status eq "D") {
         $color = $color || $DEL_COLOR;
         printf(
-            "\t%-40s %s\n",
+            "    %-" . $COLS . "s %s\n",
             colored("$file_name", $color), colored("(deleted)", $color)
             )
     } elsif ($status eq "M") {
         $color = $color || $MOD_COLOR;
         printf(
-            "\t%-40s %s\n",
+            "    %-" . $COLS . "s %s\n",
             colored("$file_name", $color), colored("(modified)", $color)
             )
     }
@@ -143,6 +149,7 @@ sub print_git_status_porcelain_list {
 
 # Return reference to 2 arrays containing info about added & excluded files
 # after parsing `git status --porcelain`
+# This function also updates $COLS
 # Params:
 #    ref_files_to_add      (reference to files_to_add array)
 #    ref_files_to_exclude
@@ -159,9 +166,12 @@ sub get_info (\@\@) {
     my @added_files_info = ();
     my @excluded_files_info = ();
 
+    my $max_width = 1;
+
     # parse git status porcelain
     foreach my $line (split "\n", $git_status_porcelain) {
         my ($status, $file_path) = split(" ", $line);
+        if (length($file_path) + 14 > $max_width) { $max_width = length($file_path) + 14; }
         if (grep /^$file_path$/, @{$ref_files_to_exclude}) {
             push(@excluded_files_info, [$status, $file_path]);
             next;
@@ -175,6 +185,7 @@ sub get_info (\@\@) {
         push(@added_files_info, [$status, $file_path]);
     }
 
+    $COLS = $max_width;
     return (\@added_files_info, \@excluded_files_info);
 }
 
