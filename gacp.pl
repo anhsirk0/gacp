@@ -114,8 +114,13 @@ sub get_top_level_rel_path {
     foreach my $f (@files) {
         chomp(my $top_level = `git rev-parse --show-toplevel`);
         my ($repo_dir) = fileparse($top_level);
-        my $top_level_rel_path = abs2rel(getcwd() . "/" . $f, $top_level);
-        $top_level_rel_path =~ s/\.\.\/$repo_dir//;
+        my $top_level_rel_path = $f;
+        if ($f =~ /^:\/:/) {
+            $top_level_rel_path =~ s/^:\/://;
+        } else {
+            $top_level_rel_path = abs2rel(getcwd() . "/" . $f, $top_level);
+        }
+        $top_level_rel_path =~ s/^\.\.\/$repo_dir//;
         push(@file_paths, $top_level_rel_path);
     }
 
@@ -123,13 +128,17 @@ sub get_top_level_rel_path {
 }
 
 # Print $git_status_porcelain but relative path to current dir
-sub print_relative_git_status_porcelain {
+# Can be used for completions
+sub print_git_status_porcelain_list {
     foreach my $line (split("\n", $git_status_porcelain)) {
         my ($status, $file_path) = split(" ", $line);
         chomp(my $top_level = `git rev-parse --show-toplevel`);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
+        if ($rel_path =~ /^\.\.\//) {
+            $rel_path = ":/:" . $file_path;
+        }
         print $rel_path . "\n";
-    }    
+    }
 }
 
 # Return reference to 2 arrays containing info about added & excluded files
@@ -149,7 +158,6 @@ sub get_info (\@\@) {
     # these files will be git added # (@files_to_add - @files_to_exclude)
     my @added_files_info = ();
     my @excluded_files_info = ();
-
 
     # parse git status porcelain
     foreach my $line (split "\n", $git_status_porcelain) {
@@ -193,7 +201,7 @@ sub main {
     chomp($git_status_porcelain = `git status --porcelain`);
 
     if ($list) {
-        print_relative_git_status_porcelain();
+        print_git_status_porcelain_list();
         exit;
     }
 
