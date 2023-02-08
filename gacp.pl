@@ -7,6 +7,7 @@ use strict;
 use Term::ANSIColor;
 use File::Spec::Functions qw(abs2rel);
 use File::Basename qw(fileparse);
+use File::Find;
 use Cwd qw(getcwd);
 use Getopt::Long;
 
@@ -19,6 +20,8 @@ my $list;
 
 # `git status --porcelain`
 my $git_status_porcelain;
+my @files_inside_new_dir = ();
+
 my $COLS = 72;
 
 # color constants
@@ -134,6 +137,21 @@ sub get_top_level_rel_path {
     return @file_paths;
 }
 
+
+# wanted sub for finding files
+sub wanted {
+    my $file_name = $File::Find::name;
+    # my $file = (split "/", $file_name)[-1];
+
+    # TODO : Check through .gitignore for files
+    # if ($in_gitignore) { return }
+
+    if (-f) {
+        push(@files_inside_new_dir, $file_name)
+    }
+}
+
+
 # Print $git_status_porcelain but relative path to current dir
 # Can be used for completions
 sub print_git_status_porcelain_list {
@@ -141,6 +159,28 @@ sub print_git_status_porcelain_list {
         my ($status, $file_path) = split(" ", $line);
         chomp(my $top_level = `git rev-parse --show-toplevel`);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
+
+        # if a directory is newly created
+        # git_status_porcelain only lists the directory and not the files inside
+        if (-d $rel_path) {
+            find({
+                wanted => \&wanted,
+                 }, $rel_path);
+        }
+        if (@files_inside_new_dir) {
+            foreach my $f (@files_inside_new_dir) {
+                my ($file_basename, $parent) = fileparse($f);
+                my ($current_dir_basename) = fileparse(getcwd());
+                if ($parent =~ /$current_dir_basename\/$/) {
+                    $f =~ s/^$parent//;
+                } else {
+                    $f =~ s/$rel_path\//:\/:$file_path/;
+                }
+                print $f . "\n";
+            }
+            next;
+        }
+
         if ($rel_path =~ /^\.\.\//) {
             $rel_path = ":/:" . $file_path;
         }
@@ -172,7 +212,9 @@ sub get_info (\@\@) {
     # parse git status porcelain
     foreach my $line (split "\n", $git_status_porcelain) {
         my ($status, $file_path) = split(" ", $line);
-        if (length($file_path) + 14 > $max_width) { $max_width = length($file_path) + 14; }
+        if (length($file_path) + 14 > $max_width) {
+            $max_width = length($file_path) + 14;
+        }
         if (grep /^$file_path$/, @{$ref_files_to_exclude}) {
             push(@excluded_files_info, [$status, $file_path]);
             next;
