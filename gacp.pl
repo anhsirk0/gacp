@@ -18,9 +18,12 @@ my $dry_run;
 my $help;
 my $list;
 
-# `git status --porcelain`
-my $git_status_porcelain;
+# This tool relies on `git status --porcelain`
+# For convenience, `git status --porcelain` is referred as git_status
+my $git_status;
+my @parsed_git_status;
 my @files_inside_new_dir = ();
+my $top_level;
 
 my $COLS = 72;
 
@@ -30,6 +33,7 @@ my $DEL_COLOR = "bright_red";   # for deleted files
 my $NEW_COLOR = "bright_cyan";  # for newly created files
 my $EXC_COLOR = "yellow";       # for excluded files
 my $STR_COLOR = "bright_blue";  # for string args
+
 
 # pretty formatted and colored options for help message
 # params:
@@ -48,6 +52,7 @@ sub format_option {
     $text .= $desc . ($default ? " [default: " . $default . "]" : "");
     return $text . "\n";
 }
+
 
 sub print_help {
     # This is a mess
@@ -72,6 +77,7 @@ sub print_help {
         "-e " . colored("new-file.pl", "underline"),
         );
 }
+
 
 # Pretty print file_name based on their status
 # Params:
@@ -111,32 +117,6 @@ sub print_file {
     }
 }
 
-# get paths relative to top-level (root) of the git repository
-# Params:
-#    files   (array of file_names : Array<String>)
-# Returns:
-#    files_path   (array of file_names : Array<String>)
-# Example:
-# ["some-file.pl"] -> ["src/lib/some-file.pl"]
-sub get_top_level_rel_path {
-    my @files = @_;
-    my @file_paths = ();
-    foreach my $f (@files) {
-        chomp(my $top_level = `git rev-parse --show-toplevel`);
-        my ($repo_dir) = fileparse($top_level);
-        my $top_level_rel_path = $f;
-        if ($f =~ /^:\/:/) {
-            $top_level_rel_path =~ s/^:\/://;
-        } else {
-            $top_level_rel_path = abs2rel(getcwd() . "/" . $f, $top_level);
-        }
-        $top_level_rel_path =~ s/^\.\.\/$repo_dir//;
-        push(@file_paths, $top_level_rel_path);
-    }
-
-    return @file_paths;
-}
-
 
 # wanted sub for finding files
 sub wanted {
@@ -152,16 +132,15 @@ sub wanted {
 }
 
 
-# Print $git_status_porcelain but relative path to current dir
+# Print $git_status but relative path to current dir
 # Can be used for completions
-sub print_git_status_porcelain_list {
-    foreach my $line (split("\n", $git_status_porcelain)) {
+sub parse_git_status {
+    foreach my $line (split("\n", $git_status)) {
         my ($status, $file_path) = split(" ", $line);
-        chomp(my $top_level = `git rev-parse --show-toplevel`);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
 
         # if a directory is newly created
-        # git_status_porcelain only lists the directory and not the files inside
+        # git_status only lists the directory and not the files inside
         if (-d $rel_path) {
             find({
                 wanted => \&wanted,
@@ -171,12 +150,12 @@ sub print_git_status_porcelain_list {
             foreach my $f (@files_inside_new_dir) {
                 my ($file_basename, $parent) = fileparse($f);
                 my ($current_dir_basename) = fileparse(getcwd());
-                if ($parent =~ /$current_dir_basename\/$/) {
+                if ($parent =~ /$current_dir_basename\/$/ || $parent eq "./") {
                     $f =~ s/^$parent//;
                 } else {
                     $f =~ s/$rel_path\//:\/:$file_path/;
                 }
-                print $f . "\n";
+                push(@parsed_git_status, $status . " " . $f);
             }
             next;
         }
@@ -184,9 +163,10 @@ sub print_git_status_porcelain_list {
         if ($rel_path =~ /^\.\.\//) {
             $rel_path = ":/:" . $file_path;
         }
-        print $rel_path . "\n";
+        push(@parsed_git_status, $status . " " . $rel_path);
     }
 }
+
 
 # Return reference to 2 arrays containing info about added & excluded files
 # after parsing `git status --porcelain`
@@ -209,8 +189,7 @@ sub get_info (\@\@) {
 
     my $max_width = 1;
 
-    # parse git status porcelain
-    foreach my $line (split "\n", $git_status_porcelain) {
+    foreach my $line (@parsed_git_status) {
         my ($status, $file_path) = split(" ", $line);
         if (length($file_path) + 14 > $max_width) {
             $max_width = length($file_path) + 14;
@@ -232,6 +211,7 @@ sub get_info (\@\@) {
     return (\@added_files_info, \@excluded_files_info);
 }
 
+
 sub main {
     GetOptions (
         "help|h" => \$help,
@@ -251,24 +231,35 @@ sub main {
         exit;
     }
 
-    # set $git_status_porcelain
-    chomp($git_status_porcelain = `git status --porcelain`);
-
-    if ($list) {
-        print_git_status_porcelain_list();
-        exit;
-    }
+    # set $top_level, $git_status
+    chomp($top_level = `git rev-parse --show-toplevel`);
+    chomp($git_status = `git status --porcelain`);
 
     # If nothing to commit
-    unless ($git_status_porcelain) {
+    unless ($git_status) {
         system("git status");
         exit;
     }
+
+    # set @parsed_git_status
+    parse_git_status();
+
+    if ($list) {
+        foreach my $f (@parsed_git_status) {
+            print $f . "\n";
+        }
+        exit;
+    }
+
     my $git_message = $ARGV[0] || "updated README";
 
     unless (@files_to_add) { $files_to_add[0] = "-A" }
-    my @parsed_files_to_add = get_top_level_rel_path(@files_to_add);
-    my @parsed_files_to_exclude = get_top_level_rel_path(@files_to_exclude);
+    my @parsed_files_to_add = @files_to_add;
+    my @parsed_files_to_exclude = @files_to_exclude;
+
+    for(@parsed_files_to_add) {
+        print colored($_, $DEL_COLOR) . "\n";
+    }
 
     my ($added_files_info, $excluded_files_info) = get_info(
         @parsed_files_to_add,
@@ -302,12 +293,12 @@ sub main {
         print "git push\n";
     } else {
         my $prev_return = system("git add " . join(" ", @added_files));
-        if ($prev_return eq "0") {
-            $prev_return = system("git commit -m \"$git_message\"");
-        }
-        if ($prev_return eq "0") {
-            system("git push");
-        }
+        # if ($prev_return eq "0") {
+        #     $prev_return = system("git commit -m \"$git_message\"");
+        # }
+        # if ($prev_return eq "0") {
+        #     system("git push");
+        # }
     }
 }
 
