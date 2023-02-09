@@ -251,15 +251,12 @@ sub main {
         exit;
     }
 
-    my $git_message = $ARGV[0] || "updated README";
+    my $git_message =
+        $ARGV[0] || $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
 
     unless (@files_to_add) { $files_to_add[0] = "-A" }
     my @parsed_files_to_add = @files_to_add;
     my @parsed_files_to_exclude = @files_to_exclude;
-
-    for(@parsed_files_to_add) {
-        print colored($_, $DEL_COLOR) . "\n";
-    }
 
     my ($added_files_info, $excluded_files_info) = get_info(
         @parsed_files_to_add,
