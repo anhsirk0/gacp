@@ -11,10 +11,10 @@ USAGE:
 
 OPTIONS:
 	h, --help 		Print help information
-    l, --list 		List new/modified/deleted files
-    d, --dry 		Dry-run (show what will happen)
+	l, --list 		List new/modified/deleted files
+	d, --dry 		Dry-run (show what will happen)
 	f, --files <FILES>	Files to add (git add) [default: -A]
-	e, --exclude <EXCLUDE>	Files to exclude (not commit)
+	e, --exclude <EXCLUDE>	Files to exclude (not to add)
 
 ARGS:
 	<MESSAGE> 		Commit message [default: "updated README"]
