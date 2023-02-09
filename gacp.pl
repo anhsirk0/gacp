@@ -293,12 +293,12 @@ sub main {
         print "git push\n";
     } else {
         my $prev_return = system("git add " . join(" ", @added_files));
-        # if ($prev_return eq "0") {
-        #     $prev_return = system("git commit -m \"$git_message\"");
-        # }
-        # if ($prev_return eq "0") {
-        #     system("git push");
-        # }
+        if ($prev_return eq "0") {
+            $prev_return = system("git commit -m \"$git_message\"");
+        }
+        if ($prev_return eq "0") {
+            system("git push");
+        }
     }
 }
 
