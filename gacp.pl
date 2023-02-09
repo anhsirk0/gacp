@@ -48,9 +48,11 @@ my $STR_COLOR = "bright_blue";  # for string args
 #      short, --long <LONG>     Description [default: Default_arg]\n
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
+    my $tab_chars_num = length($short . $long . $long x $args) > 10 ? 1 : 2;
     my $text = "\t" . colored($short, "green");
     $text .= ", " . colored("--" . $long . " ", "green");
-    $text .= ($args ? colored("<" . uc $long . ">", "green") . "\t" : "\t\t");
+    $text .= ($args ? colored("<" . uc $long . ">", "green") : "");
+    $text .= "\t" x $tab_chars_num;
     $text .= $desc . ($default ? " [default: " . $default . "]" : "");
     return $text . "\n";
 }
@@ -59,13 +61,18 @@ sub format_option {
 sub print_help {
     # This is a mess
     printf(
-        "%s\n\n%s\n\n%s \n%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
+        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
         colored("gacp", "green") . "\n" . "git add, commit & push in one go.",
         colored("USAGE:", "yellow") . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", "yellow"),
         format_option("h", "help", "Print help information", 0, 0),
         format_option("l", "list", "List new/modified/deleted files", 0, 0),
         format_option("d", "dry", "Dry-run (show what will happen)", 0, 0),
+        format_option(
+            "ni", "no-ignore",
+            "Don't auto exclude files specified in gacp ignore file",
+            0, 0
+        ),
         format_option("f", "files", "Files to add (git add)", 1, "-A"),
         format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
         colored("ARGS:", "yellow"),
@@ -122,18 +129,29 @@ sub print_file {
 
 # Read $CONFIG_DIR/repo/ignore
 sub read_ignore_file {
-    my ($_dir, $repo) = fileparse($top_level);
-    my $ignore_file = $CONFIG_DIR . "/" . $top_level . "/ignore";
-    print colored($ignore_file, $DEL_COLOR) . "\n";
+    my ($repo) = fileparse($top_level);
+    my $ignore_file = $CONFIG_DIR . "/" . $repo . "/ignore";
+    unless (-f $ignore_file) { return }
+    open(FH, "<" . $ignore_file) or die "Unable to open $ignore_file";
+    while(<FH>) {
+        for ($_) {
+            s/\#.*//; # ignore comments
+            s/\s+/ /g; # remove extra whitespace
+            s/^\s+//g; # strip left whitespace
+            s/\s+$//g; # strip right whitespace
+        }
+        unless (getcwd() eq $top_level) {
+            $_ = ":/:" . $_;
+        }
+        push(@files_to_exclude, $_);
+    }
+    close(FH);
 }
 
 # wanted sub for finding files
 sub wanted {
     my $file_name = $File::Find::name;
     # my $file = (split "/", $file_name)[-1];
-
-    # TODO : Check through .gitignore for files
-    # if ($in_gitignore) { return }
 
     if (-f) {
         push(@files_inside_new_dirs, $file_name)
@@ -248,7 +266,6 @@ sub main {
     # Read ignore file
     unless ($dont_ignore) {
         read_ignore_file();
-        exit;
     }
 
     # If nothing to commit
