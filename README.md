@@ -24,6 +24,12 @@ EXAMPLE:
 	gacp "Pushing all except new-file.pl" -e new-file.pl
 ```
 
+## Configurations
+To change default git message add $GACP_DEFAULT_MESSAGE var to environment
+```shell
+export GACP_DEFAULT_MESSAGE="My default git commit message"
+```
+
 ## Examples
 ```text
 $ gacp "First Commit" -dry
