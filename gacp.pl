@@ -4,12 +4,12 @@
 # https://codeberg.org/anhsirk0/gacp
 
 use strict;
-use Term::ANSIColor;
-use File::Spec::Functions qw(abs2rel);
+use Cwd qw(getcwd);
 use File::Basename qw(fileparse);
 use File::Find;
-use Cwd qw(getcwd);
+use File::Spec::Functions qw(abs2rel);
 use Getopt::Long;
+use Term::ANSIColor;
 
 # for cli args
 my @files_to_add     = ();
@@ -17,15 +17,17 @@ my @files_to_exclude = ();
 my $dry_run;
 my $help;
 my $list;
+my $dont_ignore;
 
 # This tool relies on `git status --porcelain`
 # For convenience, `git status --porcelain` is referred as git_status
 my $git_status;
 my @parsed_git_status;
-my @files_inside_new_dir = ();
+my @files_inside_new_dirs = ();
 my $top_level;
 
 my $COLS = 72;
+my $CONFIG_DIR = $ENV{HOME} . "/.config/gacp";
 
 # color constants
 my $MOD_COLOR = "bright_green"; # for modified files
@@ -118,6 +120,13 @@ sub print_file {
 }
 
 
+# Read $CONFIG_DIR/repo/ignore
+sub read_ignore_file {
+    my ($_dir, $repo) = fileparse($top_level);
+    my $ignore_file = $CONFIG_DIR . "/" . $top_level . "/ignore";
+    print colored($ignore_file, $DEL_COLOR) . "\n";
+}
+
 # wanted sub for finding files
 sub wanted {
     my $file_name = $File::Find::name;
@@ -127,7 +136,7 @@ sub wanted {
     # if ($in_gitignore) { return }
 
     if (-f) {
-        push(@files_inside_new_dir, $file_name)
+        push(@files_inside_new_dirs, $file_name)
     }
 }
 
@@ -146,8 +155,8 @@ sub parse_git_status {
                 wanted => \&wanted,
                  }, $rel_path);
         }
-        if (@files_inside_new_dir) {
-            foreach my $f (@files_inside_new_dir) {
+        if (@files_inside_new_dirs) {
+            foreach my $f (@files_inside_new_dirs) {
                 my ($file_basename, $parent) = fileparse($f);
                 my ($current_dir_basename) = fileparse(getcwd());
                 if ($parent =~ /$current_dir_basename\/$/ || $parent eq "./") {
@@ -217,6 +226,7 @@ sub main {
         "help|h" => \$help,
         "list|l" => \$list,
         "dry|d" => \$dry_run,
+        "no-ignore|ni" => \$dont_ignore,
         "files|f=s{1,}" => \@files_to_add,
         "exclude|e=s{1,}" => \@files_to_exclude,
         ) or die("Error in command line arguments\n");
@@ -234,6 +244,12 @@ sub main {
     # set $top_level, $git_status
     chomp($top_level = `git rev-parse --show-toplevel`);
     chomp($git_status = `git status --porcelain`);
+
+    # Read ignore file
+    unless ($dont_ignore) {
+        read_ignore_file();
+        exit;
+    }
 
     # If nothing to commit
     unless ($git_status) {
