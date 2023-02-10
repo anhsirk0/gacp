@@ -85,7 +85,7 @@ $ gacp -f README.md -dry
 Added files:
 	README.md	(new)
 
-git add -A
+git add README.md
 git commit -m "updated README"
 git push
 ```
@@ -93,14 +93,13 @@ git push
 ```text
 $ gacp "Pushing all files except README" -e README.md -dry
 Added files:
-	gacp.pl	(new)
+	gacp.pl	(modified)
 
 Excluded files:
 	README.md	(new)
 
-git add -A
+git add gacp.pl
 git commit -m "Pushing all files except README"
 git push
 ```
-
 
