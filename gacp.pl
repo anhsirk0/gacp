@@ -21,7 +21,7 @@ my $dont_ignore;
 
 # This tool relies on `git status --porcelain`
 # For convenience, `git status --porcelain` is referred as git_status
-my $git_status;
+my @git_status;
 my @parsed_git_status;
 my @files_inside_new_dirs = ();
 my $top_level;
@@ -127,10 +127,11 @@ sub print_file {
 }
 
 
-# Read $CONFIG_DIR/repo/ignore
-sub read_ignore_file {
+# Read $CONFIG_DIR/repo.ignore and return ignored files
+sub get_ignored_files {
+    my @ignored_files = ();
     my ($repo) = fileparse($top_level);
-    my $ignore_file = $CONFIG_DIR . "/" . $repo . "/ignore";
+    my $ignore_file = $CONFIG_DIR . "/" . $repo . ".ignore";
     unless (-f $ignore_file) { return }
     open(FH, "<" . $ignore_file) or die "Unable to open $ignore_file";
     while(<FH>) {
@@ -140,12 +141,11 @@ sub read_ignore_file {
             s/^\s+//g; # strip left whitespace
             s/\s+$//g; # strip right whitespace
         }
-        unless (getcwd() eq $top_level) {
-            $_ = ":/:" . $_;
-        }
-        push(@files_to_exclude, $_);
+        unless ($_) { next }
+        push(@ignored_files, $_);
     }
     close(FH);
+    return @ignored_files;
 }
 
 # wanted sub for finding files
@@ -162,9 +162,32 @@ sub wanted {
 # Print $git_status but relative path to current dir
 # Can be used for completions
 sub parse_git_status {
-    foreach my $line (split("\n", $git_status)) {
+    # Read ignore file
+    my @ignored_files = ();
+    unless ($dont_ignore) {
+        @ignored_files = get_ignored_files();
+    }
+
+    foreach my $line (@git_status) {
         my ($status, $file_path) = split(" ", $line);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
+
+        if (@ignored_files) {
+            my $rgx = qr/^${file_path}$/;
+            if (-d $rel_path) {
+                my $dir = abs2rel(getcwd(), $top_level);
+                $rgx = qr/^${dir}/;
+            }
+
+            if (grep /$rgx/, @ignored_files) {
+                unless ($file_path eq $rel_path) {
+                    $file_path = ":/:" . $file_path;
+                }
+                push(@files_to_exclude, $file_path);
+                push(@parsed_git_status, $status . " " . $file_path);
+                next;
+            }
+        }
 
         # if a directory is newly created
         # git_status only lists the directory and not the files inside
@@ -177,7 +200,7 @@ sub parse_git_status {
             foreach my $f (@files_inside_new_dirs) {
                 my ($file_basename, $parent) = fileparse($f);
                 my ($current_dir_basename) = fileparse(getcwd());
-                if ($parent =~ /$current_dir_basename\/$/ || $parent eq "./") {
+                if ($parent =~ m/$current_dir_basename\/$/ || $parent eq "./") {
                     $f =~ s/^$parent//;
                 } else {
                     $f =~ s/$rel_path\//:\/:$file_path/;
@@ -187,7 +210,7 @@ sub parse_git_status {
             next;
         }
 
-        if ($rel_path =~ /^\.\.\//) {
+        if ($rel_path =~ m/^\.\.\//) {
             $rel_path = ":/:" . $file_path;
         }
         push(@parsed_git_status, $status . " " . $rel_path);
@@ -261,15 +284,11 @@ sub main {
 
     # set $top_level, $git_status
     chomp($top_level = `git rev-parse --show-toplevel`);
-    chomp($git_status = `git status --porcelain`);
-
-    # Read ignore file
-    unless ($dont_ignore) {
-        read_ignore_file();
-    }
+    chomp(my $git_status_porcelain = `git status --porcelain`);
+    @git_status = split("\n", $git_status_porcelain);
 
     # If nothing to commit
-    unless ($git_status) {
+    unless (@git_status) {
         system("git status");
         exit;
     }
@@ -278,8 +297,9 @@ sub main {
     parse_git_status();
 
     if ($list) {
-        foreach my $f (@parsed_git_status) {
-            print $f . "\n";
+        foreach my $line (@parsed_git_status) {
+            my ($status, $file_path) = split(" ", $line);
+           print $file_path . "\n";
         }
         exit;
     }
@@ -288,33 +308,33 @@ sub main {
         $ARGV[0] || $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
 
     unless (@files_to_add) { $files_to_add[0] = "-A" }
-    my @parsed_files_to_add = @files_to_add;
-    my @parsed_files_to_exclude = @files_to_exclude;
 
     my ($added_files_info, $excluded_files_info) = get_info(
-        @parsed_files_to_add,
-        @parsed_files_to_exclude
+        @files_to_add,
+        @files_to_exclude
         );
 
     my @added_files = ();
-    if (scalar(@$added_files_info)) {
+    if (@$added_files_info) {
         print "Added files:\n";
         for (@$added_files_info) {
             print_file($_->[0], $_->[1]);
             push(@added_files, $_->[1]);
         }
         print "\n";
-    } else {
-        print "Nothing added\n";
-        exit;
     }
 
-    if (scalar(@$excluded_files_info) > 0) {
+    if (@$excluded_files_info) {
         print "Excluded files:\n";
         for (@$excluded_files_info) {
             print_file($_->[0], $_->[1], $EXC_COLOR);
         }
         print "\n";
+    }
+
+    unless (@$added_files_info) {
+        print "Nothing added\n";
+        exit;
     }
 
     if ($dry_run) {
