@@ -43,28 +43,6 @@ src/environment.ts
 ```
 you can provide `--no-ignore` or `-ni` flag if you want to add and commit these files
 
-## Examples
-```text
-$ gacp "First Commit" -dry
-Added files:
-	gacp.pl	(new)
-
-git add gacp.pl
-git commit -m "First Commit"
-git push
-```
-
-```text
-$ gacp "pushing all" -dry
-Added files:
-	gacp.pl 	(modified)
-	README.md	(new)
-
-git add -A
-git commit -m "pushing all"
-git push
-```
-
 ## List & Completions
 `gacp` provides `--list`, `-l` flag, which will list new/modified/deleted files  
 This output can be used as completions for `gacp`  
@@ -79,3 +57,50 @@ Create a file `/$HOME/.config/fish/completions/gacp.fish` with following content
 ```shell
 complete -f -c gacp -a "(gacp --list)"
 ```
+
+## Examples
+
+```text
+$ gacp -dry
+Added files:
+	gacp.pl	(new)
+
+git add gacp.pl
+git commit -m "updated README"
+git push
+```
+
+```text
+$ gacp "First Commit" -dry
+Added files:
+	gacp.pl	(new)
+
+git add gacp.pl
+git commit -m "First Commit"
+git push
+```
+
+```text
+$ gacp -f README.md -dry
+Added files:
+	README.md	(new)
+
+git add -A
+git commit -m "updated README"
+git push
+```
+
+```text
+$ gacp "Pushing all files except README" -e README.md -dry
+Added files:
+	gacp.pl	(new)
+
+Excluded files:
+	README.md	(new)
+
+git add -A
+git commit -m "Pushing all files except README"
+git push
+```
+
+
