@@ -342,12 +342,16 @@ sub main {
         exit;
     }
 
+    my $joined_added_files = $files_to_add[0] eq "-A" ?
+        "-A" :
+        join(" ", @added_files);
+
     if ($dry_run) {
-        print "git add " . join(" ", @added_files) . "\n";
+        print "git add " . $joined_added_files . "\n";
         print "git commit -m \"$git_message\" \n";
         print "git push\n";
     } else {
-        my $prev_return = system("git add " . join(" ", @added_files));
+        my $prev_return = system("git add " . $joined_added_files);
         if ($prev_return eq "0") {
             $prev_return = system("git commit -m \"$git_message\"");
         }
