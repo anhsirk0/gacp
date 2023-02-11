@@ -199,8 +199,13 @@ sub parse_git_status {
         if (@files_inside_new_dirs) {
             foreach my $f (@files_inside_new_dirs) {
                 my ($file_basename, $parent) = fileparse($f);
-                my ($current_dir_basename) = fileparse(getcwd());
-                if ($parent =~ m/$current_dir_basename\/$/ || $parent =~ m/^\.\//) {
+                my ($cwd_basename) = fileparse(getcwd());
+                my ($top_level_basename) = fileparse($top_level);
+                if (
+                    $parent =~ m/($cwd_basename|$top_level_basename)\/$/ ||
+                    $parent =~ m/^\.\// ||
+                    $cwd_basename eq $top_level_basename
+                    ) {
                     $f =~ s/^\.\///;
                 } else {
                     $f =~ s/$rel_path\//:\/:$file_path/;
@@ -250,7 +255,7 @@ sub get_info (\@\@) {
         };
         if (
             @files_to_add[0] ne "-A" &&
-            !(grep /^$file_path$/, @{$ref_files_to_add})
+            !(grep /^(\.\/)?$file_path$/, @{$ref_files_to_add})
             ) {
             next
         }
