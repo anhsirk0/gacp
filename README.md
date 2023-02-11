@@ -4,11 +4,33 @@ git add, commit and push in one go.
 ## About
 gacp is a wrapper around `git` to make commiting and pushing files convenient.
 
+## Installation
+Its just a perl script
+download it make it executable and put somewhere in your $PATH
+
+#### with wget
+``` bash
+wget https://codeberg.org/anhsirk0/gacp/raw/branch/master/gacp.pl -O gacp
+```
+#### or with curl
+``` bash
+curl https://codeberg.org/anhsirk0/gacp/raw/branch/master/gacp.pl --output gacp
+```
+#### making it executable
+```bash
+chmod +x gacp
+```
+#### copying it to somewhere in $PATH
+```bash
+cp gacp ~/.local/bin/
+```
+or 
+```bash
+cp gacp /usr/local/bin/    # root required
+```
+
 ## Usage
 ```text
-gacp
-git add, commit & push in one go.
-
 USAGE:
 	gacp [ARGS] [OPTIONS]
 
