@@ -200,8 +200,8 @@ sub parse_git_status {
             foreach my $f (@files_inside_new_dirs) {
                 my ($file_basename, $parent) = fileparse($f);
                 my ($current_dir_basename) = fileparse(getcwd());
-                if ($parent =~ m/$current_dir_basename\/$/ || $parent eq "./") {
-                    $f =~ s/^$parent//;
+                if ($parent =~ m/$current_dir_basename\/$/ || $parent =~ m/^\.\//) {
+                    $f =~ s/^\.\///;
                 } else {
                     $f =~ s/$rel_path\//:\/:$file_path/;
                 }
