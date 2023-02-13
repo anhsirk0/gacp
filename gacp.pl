@@ -342,9 +342,10 @@ sub main {
         exit;
     }
 
-    my $joined_added_files = $files_to_add[0] eq "-A" ?
-        "-A" :
-        join(" ", @added_files);
+    # my $joined_added_files = $files_to_add[0] eq "-A" ?
+    #     "-A" :
+    #     join(" ", @added_files);
+    my $joined_added_files = join(" ", @added_files);
 
     if ($dry_run) {
         print "git add " . $joined_added_files . "\n";
