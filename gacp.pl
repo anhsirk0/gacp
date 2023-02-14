@@ -176,7 +176,9 @@ sub parse_git_status {
             my $rgx = qr/^${file_path}$/;
             if (-d $rel_path) {
                 my $dir = abs2rel(getcwd(), $top_level);
-                $rgx = qr/^${dir}/;
+                unless ($dir eq ".") {
+                    $rgx = qr/^${dir}/;
+                }
             }
 
             if (grep /$rgx/, @ignored_files) {
@@ -304,7 +306,7 @@ sub main {
     if ($list) {
         foreach my $line (@parsed_git_status) {
             my ($status, $file_path) = split(" ", $line);
-           print $file_path . "\n";
+            print $file_path . "\n";
         }
         exit;
     }
