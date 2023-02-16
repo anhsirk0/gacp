@@ -332,6 +332,7 @@ sub main {
 
         while (my ($i, $elem) = each @$added_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1]);
+            push(@added_files, $elem->[1]);
         }
         print "\n";
     }
@@ -350,11 +351,7 @@ sub main {
         exit;
     }
 
-    # my $joined_added_files = $files_to_add[0] eq "-A" ?
-    #     "-A" :
-    #     join(" ", @added_files);
     my $joined_added_files = join(" ", @added_files);
-
     my $git_add_command    = "git add " . $joined_added_files;
     my $git_commit_command = "git commit -m \"$git_message\"";
     my $git_push_command   = "git push";
