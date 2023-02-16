@@ -4,11 +4,12 @@
 # https://codeberg.org/anhsirk0/gacp
 
 use strict;
-use Cwd qw(getcwd);
-use File::Basename qw(fileparse);
+use Cwd qw( getcwd );
+use File::Basename qw( fileparse );
 use File::Find;
-use File::Spec::Functions qw(abs2rel);
+use File::Spec::Functions qw( abs2rel );
 use Getopt::Long;
+use List::Util qw( max );
 use Term::ANSIColor;
 
 # for cli args
@@ -28,6 +29,7 @@ my $top_level;
 
 my $COLS = 72;
 my $CONFIG_DIR = $ENV{HOME} . "/.config/gacp";
+my $MAX_TOTAL = 1;
 
 # color constants
 my $GREEN     = "bright_green";
@@ -92,8 +94,10 @@ sub print_help {
 
 # Pretty print file_name based on their status
 # Params:
+#     idx        (Index of the file : Int)
 #     status     (Status of the file : "??" | "M" | "D")
 #     file_name  (Name of the file : String)
+#     color      (Color to use for the file : String)
 # Example print:
 #     modified_file.pl     (modified)
 #     newly_created.pl     (new)
@@ -102,7 +106,7 @@ sub print_file {
     my ($idx, $status, $file_name, $color) = @_;
     my $available_cols = `tput cols`;
     # if `tput cols` return non-zero exit status code
-    if ($?) { $available_cols = $COLS; }
+    if ($?) { $available_cols = 88; }
     $available_cols = int($available_cols);
 
     if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
@@ -119,8 +123,10 @@ sub print_file {
         $label = "modified";
     }
     printf(
-        "    %-" . $COLS . "s %s\n",
-        colored("$idx\) $file_name", $color), colored("($label)", $color)
+        "     %s %-" . $COLS . "s %s\n",
+        colored(" " x (length($MAX_TOTAL) - length($idx)) . "${idx}) ", $color),
+        colored("$file_name", $color),
+        colored("($label)", $color)
         );
 }
 
@@ -328,8 +334,9 @@ sub main {
     my @added_files = ();
     if (@$added_files_info) {
         my $total = scalar(@$added_files_info);
-        print colored(get_heading("Added", $total) . "\n", $DOC_COLOR);
+        $MAX_TOTAL = max($MAX_TOTAL, $total);
 
+        print colored(get_heading("Added", $total) . "\n", $DOC_COLOR);
         while (my ($i, $elem) = each @$added_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1]);
             push(@added_files, $elem->[1]);
@@ -339,6 +346,8 @@ sub main {
 
     if (@$excluded_files_info) {
         my $total = scalar(@$excluded_files_info);
+        $MAX_TOTAL = max($MAX_TOTAL, $total);
+
         print colored(get_heading("Exclude", $total) . "\n", $DOC_COLOR);
         while (my ($i, $elem) = each @$excluded_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1], $EXC_COLOR);
