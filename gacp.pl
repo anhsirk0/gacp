@@ -30,11 +30,14 @@ my $COLS = 72;
 my $CONFIG_DIR = $ENV{HOME} . "/.config/gacp";
 
 # color constants
-my $MOD_COLOR = "bright_green"; # for modified files
-my $DEL_COLOR = "bright_red";   # for deleted files
-my $NEW_COLOR = "bright_cyan";  # for newly created files
-my $EXC_COLOR = "yellow";       # for excluded files
-my $STR_COLOR = "bright_blue";  # for string args
+my $GREEN     = "bright_green";
+my $YELLOW    = "yellow";
+my $MOD_COLOR = $GREEN;        # for modified files
+my $DEL_COLOR = "bright_red";  # for deleted files
+my $NEW_COLOR = "cyan";        # for newly created files
+my $EXC_COLOR = $YELLOW;       # for excluded files
+my $STR_COLOR = "bright_blue"; # for string args
+my $DOC_COLOR = "bright_black";
 
 
 # pretty formatted and colored options for help message
@@ -48,12 +51,11 @@ my $STR_COLOR = "bright_blue";  # for string args
 #      short, --long <LONG>     Description [default: Default_arg]\n
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
-    my $tab_chars_num = length($short . $long . $long x $args) > 10 ? 1 : 2;
-    my $text = "\t" . colored($short, "green");
-    $text .= ", " . colored("--" . $long . " ", "green");
-    $text .= ($args ? colored("<" . uc $long . ">", "green") : "");
-    $text .= "\t" x $tab_chars_num;
-    $text .= $desc . ($default ? " [default: " . $default . "]" : "");
+    my $tab_chars = "\t" . (length($short . $long . $long x $args) < 11 && "\t");
+    my $text = "\t" . colored($short, $GREEN);
+    $text .= ", " . colored("--" . $long . " ", $GREEN);
+    $text .= ($args > 0 && colored("<" . uc $long . ">", $GREEN)) . $tab_chars;
+    $text .= $desc . ($default ne 0 && " [default: " . $default . "]");
     return $text . "\n";
 }
 
@@ -62,9 +64,9 @@ sub print_help {
     # This is a mess
     printf(
         "%s\n\n%s\n\n%s \n%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
-        colored("gacp", "green") . "\n" . "git add, commit & push in one go.",
-        colored("USAGE:", "yellow") . "\n\t" . "gacp [ARGS] [OPTIONS]",
-        colored("OPTIONS:", "yellow"),
+        colored("gacp", $GREEN) . "\n" . "git add, commit & push in one go.",
+        colored("USAGE:", $YELLOW) . "\n\t" . "gacp [ARGS] [OPTIONS]",
+        colored("OPTIONS:", $YELLOW),
         format_option("h", "help", "Print help information", 0, 0),
         format_option("l", "list", "List new/modified/deleted files", 0, 0),
         format_option("d", "dry", "Dry-run (show what will happen)", 0, 0),
@@ -75,10 +77,10 @@ sub print_help {
         ),
         format_option("f", "files", "Files to add (git add)", 1, "-A"),
         format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
-        colored("ARGS:", "yellow"),
-        colored("\t<MESSAGE>", "green"),
+        colored("ARGS:", $YELLOW),
+        colored("\t<MESSAGE>", $GREEN),
         "\t\tCommit message [default: \"updated README\"]",
-        colored("EXAMPLE:", "yellow"),
+        colored("EXAMPLE:", $YELLOW),
         "\tgacp " . colored("\"First Commit\"", $STR_COLOR),
         "\tgacp " . colored("\"updated README\"", $STR_COLOR),
         "-f " . colored("README.md", "underline"),
@@ -97,33 +99,35 @@ sub print_help {
 #     newly_created.pl     (new)
 #     deleted_file.pl      (deleted)
 sub print_file {
-    my ($status, $file_name, $color) = @_;
+    my ($idx, $status, $file_name, $color) = @_;
     my $available_cols = `tput cols`;
     # if `tput cols` return non-zero exit status code
-    if ($?) { $available_cols = 60; }
+    if ($?) { $available_cols = $COLS; }
     $available_cols = int($available_cols);
 
     if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
 
+    my $label;
     if ($status eq "??") {
         $color = $color || $NEW_COLOR;
-        printf(
-            "    %-" . $COLS . "s %s\n",
-            colored("$file_name", $color), colored("(new)", $color)
-            )
+        $label = "new";
     } elsif ($status eq "D") {
         $color = $color || $DEL_COLOR;
-        printf(
-            "    %-" . $COLS . "s %s\n",
-            colored("$file_name", $color), colored("(deleted)", $color)
-            )
+        $label = "delete";
     } elsif ($status eq "M") {
         $color = $color || $MOD_COLOR;
-        printf(
-            "    %-" . $COLS . "s %s\n",
-            colored("$file_name", $color), colored("(modified)", $color)
-            )
+        $label = "modified";
     }
+    printf(
+        "    %-" . $COLS . "s %s\n",
+        colored("$idx\) $file_name", $color), colored("($label)", $color)
+        );
+}
+
+
+sub get_heading {
+    my ($name, $total) = @_;
+    return "$name ($total file" . ($total > 1 && "s") . "):";
 }
 
 
@@ -323,18 +327,20 @@ sub main {
 
     my @added_files = ();
     if (@$added_files_info) {
-        print "Added files:\n";
-        for (@$added_files_info) {
-            print_file($_->[0], $_->[1]);
-            push(@added_files, $_->[1]);
+        my $total = scalar(@$added_files_info);
+        print colored(get_heading("Added", $total) . "\n", $DOC_COLOR);
+
+        while (my ($i, $elem) = each @$added_files_info) {
+            print_file($i + 1, $elem->[0], $elem->[1]);
         }
         print "\n";
     }
 
     if (@$excluded_files_info) {
-        print "Excluded files:\n";
-        for (@$excluded_files_info) {
-            print_file($_->[0], $_->[1], $EXC_COLOR);
+        my $total = scalar(@$excluded_files_info);
+        print colored(get_heading("Exclude", $total) . "\n", $DOC_COLOR);
+        while (my ($i, $elem) = each @$excluded_files_info) {
+            print_file($i + 1, $elem->[0], $elem->[1], $EXC_COLOR);
         }
         print "\n";
     }
@@ -349,19 +355,24 @@ sub main {
     #     join(" ", @added_files);
     my $joined_added_files = join(" ", @added_files);
 
+    my $git_add_command    = "git add " . $joined_added_files;
+    my $git_commit_command = "git commit -m \"$git_message\"";
+    my $git_push_command   = "git push";
+
     if ($dry_run) {
-        print "git add " . $joined_added_files . "\n";
-        print "git commit -m \"$git_message\" \n";
-        print "git push\n";
+        print $git_add_command . "\n";
+        print $git_commit_command . "\n";
+        print $git_push_command . "\n";
     } else {
-        my $prev_return = system("git add " . $joined_added_files);
+        my $prev_return = system($git_add_command);
         if ($prev_return eq "0") {
-            $prev_return = system("git commit -m \"$git_message\"");
+            $prev_return = system($git_commit_command);
         }
         if ($prev_return eq "0") {
-            system("git push");
+            system($git_push_command);
         }
     }
 }
+
 
 main()
