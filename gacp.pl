@@ -53,10 +53,10 @@ my $DOC_COLOR = "bright_black";
 #      short, --long <LONG>     Description [default: Default_arg]\n
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
-    my $tab_chars = "\t" . (length($short . $long . $long x $args) < 11 && "\t");
+    my $tabs = "\t" . (length($short . $long . $long x $args) < 11 && "\t");
     my $text = "\t" . colored($short, $GREEN);
     $text .= ", " . colored("--" . $long . " ", $GREEN);
-    $text .= ($args > 0 && colored("<" . uc $long . ">", $GREEN)) . $tab_chars;
+    $text .= ($args > 0 && colored("<" . uc $long . ">", $GREEN)) . $tabs;
     $text .= $desc . ($default ne 0 && " [default: " . $default . "]");
     return $text . "\n";
 }
@@ -123,7 +123,7 @@ sub print_file {
         $label = "modified";
     }
     printf(
-        "     %s %-" . $COLS . "s %s\n",
+        "    %s %-" . $COLS . "s %s\n",
         colored(" " x (length($MAX_TOTAL) - length($idx)) . "${idx}) ", $color),
         colored("$file_name", $color),
         colored("($label)", $color)
@@ -179,6 +179,7 @@ sub parse_git_status {
     }
 
     foreach my $line (@git_status) {
+        @files_inside_new_dirs = ();
         my ($status, $file_path) = split(" ", $line);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
 
@@ -335,7 +336,6 @@ sub main {
     if (@$added_files_info) {
         my $total = scalar(@$added_files_info);
         $MAX_TOTAL = max($MAX_TOTAL, $total);
-
         print colored(get_heading("Added", $total) . "\n", $DOC_COLOR);
         while (my ($i, $elem) = each @$added_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1]);
@@ -347,7 +347,6 @@ sub main {
     if (@$excluded_files_info) {
         my $total = scalar(@$excluded_files_info);
         $MAX_TOTAL = max($MAX_TOTAL, $total);
-
         print colored(get_heading("Exclude", $total) . "\n", $DOC_COLOR);
         while (my ($i, $elem) = each @$excluded_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1], $EXC_COLOR);
@@ -360,23 +359,21 @@ sub main {
         exit;
     }
 
+    print colored("Commit message:\n", $DOC_COLOR);
+    print colored("    $git_message\n\n", $STR_COLOR);
+
     my $joined_added_files = join(" ", @added_files);
     my $git_add_command    = "git add " . $joined_added_files;
     my $git_commit_command = "git commit -m \"$git_message\"";
     my $git_push_command   = "git push";
 
-    if ($dry_run) {
-        print $git_add_command . "\n";
-        print $git_commit_command . "\n";
-        print $git_push_command . "\n";
-    } else {
-        my $prev_return = system($git_add_command);
-        if ($prev_return eq "0") {
-            $prev_return = system($git_commit_command);
-        }
-        if ($prev_return eq "0") {
-            system($git_push_command);
-        }
+    if ($dry_run) { exit; }
+    my $prev_return = system($git_add_command);
+    if ($prev_return eq "0") {
+        $prev_return = system($git_commit_command);
+    }
+    if ($prev_return eq "0") {
+        system($git_push_command);
     }
 }
 
