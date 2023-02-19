@@ -11,6 +11,7 @@ use File::Spec::Functions qw( abs2rel );
 use Getopt::Long;
 use List::Util qw( max );
 use Term::ANSIColor;
+use warnings;
 
 # for cli args
 my @files_to_add     = ();
@@ -267,7 +268,7 @@ sub get_info (\@\@) {
             next;
         };
         if (
-            @files_to_add[0] ne "-A" &&
+            $files_to_add[0] ne "-A" &&
             !(grep /^(\.\/)?$file_path$/, @{$ref_files_to_add})
             ) {
             next
