@@ -87,10 +87,6 @@ complete -f -c gacp -a "(gacp --list)"
 $ gacp -dry
 Added files:
 	gacp.pl	(new)
-
-git add gacp.pl
-git commit -m "updated README"
-git push
 ```
 
 ```text
