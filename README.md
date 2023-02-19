@@ -10,11 +10,11 @@ download it make it executable and put somewhere in your $PATH
 
 #### with wget
 ``` bash
-wget https://codeberg.org/anhsirk0/gacp/raw/branch/master/gacp.pl -O gacp
+wget https://codeberg.org/anhsirk0/gacp/raw/branch/main/gacp.pl -O gacp
 ```
 #### or with curl
 ``` bash
-curl https://codeberg.org/anhsirk0/gacp/raw/branch/master/gacp.pl --output gacp
+curl https://codeberg.org/anhsirk0/gacp/raw/branch/main/gacp.pl --output gacp
 ```
 #### making it executable
 ```bash
