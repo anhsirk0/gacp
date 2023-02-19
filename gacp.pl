@@ -363,12 +363,14 @@ sub main {
     print colored("Commit message:\n", $DOC_COLOR);
     print colored("    $git_message\n\n", $STR_COLOR);
 
+    if ($dry_run) { exit; }
+
+    # git add, commit and push
     my $joined_added_files = join(" ", @added_files);
     my $git_add_command    = "git add " . $joined_added_files;
     my $git_commit_command = "git commit -m \"$git_message\"";
     my $git_push_command   = "git push";
 
-    if ($dry_run) { exit; }
     my $prev_return = system($git_add_command);
     if ($prev_return eq "0") {
         $prev_return = system($git_commit_command);
