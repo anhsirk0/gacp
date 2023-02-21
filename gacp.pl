@@ -355,15 +355,15 @@ sub main {
         print "\n";
     }
 
-    unless (@$added_files_info) {
-        print "Nothing added\n";
-        exit;
-    }
-
     print colored("Commit message:\n", $DOC_COLOR);
     print colored("    $git_message\n\n", $STR_COLOR);
 
     if ($dry_run) { exit; }
+
+    unless (@$added_files_info) {
+        print "Nothing added\n";
+        exit;
+    }
 
     # git add, commit and push
     my $joined_added_files = join(" ", @added_files);
