@@ -181,7 +181,8 @@ sub parse_git_status {
 
     foreach my $line (@git_status) {
         @files_inside_new_dirs = ();
-        my ($status, $file_path) = split(" ", $line);
+        $line =~ s/^\s+//; # trim left whitespace
+        my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
         my $rel_path = abs2rel($top_level . "/" . $file_path);
 
         if (@ignored_files) {
@@ -262,7 +263,7 @@ sub get_info (\@\@) {
         my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
 
         # if file_path has space in them
-        if ($file_path =~ m/ /) { $file_path = "'" . $file_path . "'"; }
+        if ($file_path =~ m/ / && ! $file_path =~ m/^"/) { $file_path = "'" . $file_path . "'"; }
 
         if (length($file_path) + 14 > $max_width) {
             $max_width = length($file_path) + 14;
@@ -321,7 +322,7 @@ sub main {
 
     if ($list) {
         foreach my $line (@parsed_git_status) {
-            my ($status, $file_path) = split(" ", $line);
+            my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
             print $file_path . "\n";
         }
         exit;
