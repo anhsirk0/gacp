@@ -259,7 +259,11 @@ sub get_info (\@\@) {
     my $max_width = 1;
 
     foreach my $line (@parsed_git_status) {
-        my ($status, $file_path) = split(" ", $line);
+        my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
+
+        # if file_path has space in them
+        if ($file_path =~ m/ /) { $file_path = "'" . $file_path . "'"; }
+
         if (length($file_path) + 14 > $max_width) {
             $max_width = length($file_path) + 14;
         }
