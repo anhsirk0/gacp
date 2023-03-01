@@ -26,7 +26,7 @@ cp gacp ~/.local/bin/
 ```
 or 
 ```bash
-cp gacp /usr/local/bin/    # root required
+sudo cp gacp /usr/local/bin/    # root required
 ```
 
 ## Usage

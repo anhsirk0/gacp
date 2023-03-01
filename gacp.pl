@@ -26,11 +26,13 @@ my $dont_ignore;
 my @git_status;
 my @parsed_git_status;
 my @files_inside_new_dirs = ();
+my @dirs_to_add           = ();
+my @dirs_to_exclude       = ();
 my $top_level;
 
-my $COLS = 72;
+my $COLS       = 72;
 my $CONFIG_DIR = $ENV{HOME} . "/.config/gacp";
-my $MAX_TOTAL = 1;
+my $MAX_TOTAL  = 1;
 
 # color constants
 my $GREEN     = "bright_green";
@@ -135,6 +137,33 @@ sub print_file {
 sub get_heading {
     my ($name, $total) = @_;
     return "$name ($total file" . ($total > 1 && "s") . "):";
+}
+
+
+# Populate @dirs_to_add by choosing dir from @files_to_add
+# Populate @dirs_to_exclude by choosing dir from @files_to_exclude
+# Example:
+#    @files_to_add = ["file1.pl", "dir1"]
+#  then:
+#    @dirs_to_add = ["dir1"]
+sub get_dirs_from_files_arr {
+    my (@files_arr) = @_;
+    my @dirs = ();
+    foreach my $f (@files_arr) {
+        if (-d $f) {
+            $f =~ s/$\///; # remove trailing slash
+            push(@dirs, $f)
+        }
+    }
+    return @dirs;
+}
+
+sub update_dirs_to_add {
+    @dirs_to_add = get_dirs_from_files_arr(@files_to_add)
+}
+
+sub update_dirs_to_exclude {
+    @dirs_to_exclude = get_dirs_from_files_arr(@files_to_exclude);
 }
 
 
@@ -264,21 +293,37 @@ sub get_info (\@\@) {
         my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
 
         # if file_path has space in them
-        if ($file_path =~ m/ / && ! $file_path =~ m/^"/) { $file_path = "'" . $file_path . "'"; }
+        if ($file_path =~ m/ / && ! $file_path =~ m/^"/) {
+            $file_path = "'" . $file_path . "'";
+        }
 
         if (length($file_path) + 14 > $max_width) {
             $max_width = length($file_path) + 14;
         }
+
         if (grep /^$file_path$/, @{$ref_files_to_exclude}) {
             push(@excluded_files_info, [$status, $file_path]);
             next;
-        };
+        }
+
+        my $dir = (split("/", $file_path))[0];
+        if (grep /^$dir$/, @dirs_to_exclude) {
+            push(@excluded_files_info, [$status, $file_path]);
+            next;
+        }
+
+        if (grep /^$dir$/, @dirs_to_add) {
+            push(@added_files_info, [$status, $file_path]);
+            next;
+        }
+
         if (
             $files_to_add[0] ne "-A" &&
             !(grep /^(\.\/)?$file_path$/, @{$ref_files_to_add})
             ) {
             next
         }
+
         push(@added_files_info, [$status, $file_path]);
     }
 
@@ -332,6 +377,9 @@ sub main {
     my $git_message =
         $ARGV[0] || $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
 
+    update_dirs_to_add();
+    update_dirs_to_exclude();
+
     unless (@files_to_add) { $files_to_add[0] = "-A" }
 
     my ($added_files_info, $excluded_files_info) = get_info(
@@ -354,7 +402,7 @@ sub main {
     if (@$excluded_files_info) {
         my $total = scalar(@$excluded_files_info);
         $MAX_TOTAL = max($MAX_TOTAL, $total);
-        print colored(get_heading("Exclude", $total) . "\n", $DOC_COLOR);
+        print colored(get_heading("Excluded", $total) . "\n", $DOC_COLOR);
         while (my ($i, $elem) = each @$excluded_files_info) {
             print_file($i + 1, $elem->[0], $elem->[1], $EXC_COLOR);
         }
