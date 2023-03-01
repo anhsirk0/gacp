@@ -159,6 +159,7 @@ sub get_ignored_files {
     return @ignored_files;
 }
 
+
 # wanted sub for finding files
 sub wanted {
     my $file_name = $File::Find::name;
@@ -373,7 +374,7 @@ sub main {
     # git add, commit and push
     my $joined_added_files = join(" ", @added_files);
     my $git_add_command    = "git add " . $joined_added_files;
-    my $git_commit_command = "git commit -m \"$git_message\"";
+    my $git_commit_command = "git commit -m '" . $git_message . "'";
     my $git_push_command   = "git push";
 
     my $prev_return = system($git_add_command);
