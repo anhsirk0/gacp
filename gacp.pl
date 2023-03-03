@@ -37,13 +37,19 @@ my $MAX_TOTAL  = 1;
 # color constants
 my $GREEN     = "bright_green";
 my $YELLOW    = "yellow";
-my $MOD_COLOR = $GREEN;        # for modified files
-my $DEL_COLOR = "bright_red";  # for deleted files
-my $NEW_COLOR = "cyan";        # for newly created files
-my $EXC_COLOR = $YELLOW;       # for excluded files
-my $STR_COLOR = "bright_blue"; # for string args
+my $MOD_COLOR = $GREEN;           # for modified files
+my $DEL_COLOR = "bright_red";     # for deleted files
+my $NEW_COLOR = "bright_cyan";           # for newly created files
+my $EXC_COLOR = $YELLOW;          # for excluded files
+my $STG_COLOR = "bright_magenta"; # for staged files
+my $STR_COLOR = "bright_blue";    # for string args
 my $DOC_COLOR = "bright_black";
 
+# git status codes
+my $ADDED_STATUS    = "A";
+my $MODIFIED_STATUS = "M";
+my $DELETED_STATUS  = "D";
+my $NEW_STATUS      = "??";
 
 # pretty formatted and colored options for help message
 # params:
@@ -115,15 +121,21 @@ sub print_file {
     if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
 
     my $label;
-    if ($status eq "??") {
+    if ($status eq $NEW_STATUS) {
         $color = $color || $NEW_COLOR;
         $label = "new";
-    } elsif ($status eq "D") {
+    } elsif ($status eq $DELETED_STATUS) {
         $color = $color || $DEL_COLOR;
         $label = "delete";
-    } elsif ($status eq "M") {
+    } elsif ($status eq $MODIFIED_STATUS) {
         $color = $color || $MOD_COLOR;
         $label = "modified";
+    } elsif ($status eq $ADDED_STATUS) {
+        $color = $color || $STG_COLOR;
+        $label = "staged";
+    } else {
+        $color = $DOC_COLOR;
+        $label = "";        
     }
     printf(
         "    %s %-" . $COLS . "s %s\n",
@@ -139,6 +151,16 @@ sub get_heading {
     return "$name ($total file" . ($total > 1 && "s") . "):";
 }
 
+
+# return status and file_path after spliting the $line
+# Example:
+# $line = " ?? new/file.pl"
+# -> $status = "??", $file_path = "new/file.pl"
+sub get_status_and_path {
+    my ($line) = @_;
+    my ($status, $file_path) = $line =~ /([^\s]*?)\s+([^\s]*)/;
+    return ($status, $file_path)
+}
 
 # Populate @dirs_to_add by choosing dir from @files_to_add
 # Populate @dirs_to_exclude by choosing dir from @files_to_exclude
@@ -212,7 +234,7 @@ sub parse_git_status {
     foreach my $line (@git_status) {
         @files_inside_new_dirs = ();
         $line =~ s/^\s+//; # trim left whitespace
-        my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
+        my ($status, $file_path) = get_status_and_path($line);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
 
         if (@ignored_files) {
@@ -290,7 +312,7 @@ sub get_info (\@\@) {
     my $max_width = 1;
 
     foreach my $line (@parsed_git_status) {
-        my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
+        my ($status, $file_path) = get_status_and_path($line);
 
         # if file_path has space in them
         if ($file_path =~ m/ / && ! $file_path =~ m/^"/) {
@@ -368,7 +390,8 @@ sub main {
 
     if ($list) {
         foreach my $line (@parsed_git_status) {
-            my ($status, $file_path) = $line =~ /^(.*?) (.*)$/;
+            my ($status, $file_path) = get_status_and_path($line);
+            if ($status eq $ADDED_STATUS) { next }
             print $file_path . "\n";
         }
         exit;
