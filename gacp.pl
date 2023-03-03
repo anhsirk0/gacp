@@ -135,7 +135,7 @@ sub print_file {
         $label = "staged";
     } else {
         $color = $DOC_COLOR;
-        $label = "";        
+        $label = "";
     }
     printf(
         "    %s %-" . $COLS . "s %s\n",
