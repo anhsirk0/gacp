@@ -38,7 +38,9 @@ OPTIONS:
 	h, --help 		Print help information
 	l, --list 		List new/modified/deleted files
 	d, --dry 		Dry-run (show what will happen)
+	r, --relative-paths 	Enable Relative paths
 	ni, --no-ignore 	Don't auto exclude files specified in gacp ignore file
+	np, --no-push 		No push (Only add and commit)
 	f, --files <FILES>	Files to add (git add) [default: -A]
 	e, --exclude <EXCLUDE>	Files to exclude (not to add)
 
@@ -123,10 +125,13 @@ git push
 ```
 
 ## Limitations
-You can't add files that are not in current directory by specifying relative path
+You can't add files that are not in current directory by specifying relative path (unless you pass `--relative-paths` or `-r` flag)  
 Examples:  
 ```text
 gacp -f ../some-file.pl     # will NOT work
+```
+```text
+gacp -f ../some-file.pl -r  # will work
 ```
 ```text
 gacp -f :/:src/some-file.pl # will work
