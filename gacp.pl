@@ -21,6 +21,7 @@ my $help;
 my $list;
 my $dont_push;
 my $dont_ignore;
+my $relative_paths;
 
 # This tool relies on `git status --porcelain`
 # For convenience, `git status --porcelain` is referred as git_status
@@ -75,13 +76,14 @@ sub format_option {
 sub print_help {
     # This is a mess
     printf(
-        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
+        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
         colored("gacp", $GREEN) . "\n" . "git add, commit & push in one go.",
         colored("USAGE:", $YELLOW) . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", $YELLOW),
         format_option("h", "help", "Print help information", 0, 0),
         format_option("l", "list", "List new/modified/deleted files", 0, 0),
         format_option("d", "dry", "Dry-run (show what will happen)", 0, 0),
+        format_option("r", "relative-paths", "Enable Relative paths", 0, 0),
         format_option(
             "ni", "no-ignore",
             "Don't auto exclude files specified in gacp ignore file",
@@ -137,7 +139,7 @@ sub print_file {
         $label = "staged";
     } else {
         $color = $DOC_COLOR;
-        $label = "";
+        $label = $status;
     }
     printf(
         "    %s %-" . $COLS . "s %s\n",
@@ -196,7 +198,7 @@ sub get_ignored_files {
     my @ignored_files = ();
     my ($repo) = fileparse($top_level);
     my $ignore_file = $CONFIG_DIR . "/" . $repo . ".ignore";
-    unless (-f $ignore_file) { return }
+    unless (-f $ignore_file) { return @ignored_files }
     open(FH, "<" . $ignore_file) or die "Unable to open $ignore_file";
     while(<FH>) {
         for ($_) {
@@ -217,13 +219,13 @@ sub get_ignored_files {
 sub wanted {
     my $file_name = $File::Find::name;
     # my $file = (split "/", $file_name)[-1];
-
     if (-f) {
         push(@files_inside_new_dirs, $file_name)
     }
 }
 
 
+# This is the core of the whole script
 # Print $git_status but relative path to current dir
 # Can be used for completions
 sub parse_git_status {
@@ -247,11 +249,11 @@ sub parse_git_status {
                     $rgx = qr/^${dir}/;
                 }
             }
-
             if (grep /$rgx/, @ignored_files) {
                 unless ($file_path eq $rel_path) {
                     $file_path = ":/:" . $file_path;
                 }
+                if ($relative_paths) { $file_path = $rel_path }
                 push(@files_to_exclude, $file_path);
                 push(@parsed_git_status, $status . " " . $file_path);
                 next;
@@ -276,15 +278,14 @@ sub parse_git_status {
                     $cwd_basename eq $top_level_basename
                     ) {
                     $f =~ s/^\.\///;
-                } else {
+                } elsif (!$relative_paths) {
                     $f =~ s/$rel_path\//:\/:$file_path/;
                 }
                 push(@parsed_git_status, $status . " " . $f);
             }
             next;
         }
-
-        if ($rel_path =~ m/^\.\.\//) {
+        if ($rel_path =~ m/^\.\.\// && !$relative_paths) {
             $rel_path = ":/:" . $file_path;
         }
         push(@parsed_git_status, $status . " " . $rel_path);
@@ -361,6 +362,7 @@ sub main {
         "help|h" => \$help,
         "list|l" => \$list,
         "dry|d" => \$dry_run,
+        "relative-paths|r" => \$relative_paths,
         "no-ignore|ni" => \$dont_ignore,
         "no-push|np" => \$dont_push,
         "files|f=s{1,}" => \@files_to_add,
@@ -460,5 +462,12 @@ sub main {
     }
 }
 
+
+# # Helper func for debugging (can be commented out)
+# sub debug_print {
+#     my ($text, $color) = @_;
+#     unless ($color) { $color = $STR_COLOR }
+#     print colored($text, $color) . "\n";
+# }
 
 main()
