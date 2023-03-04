@@ -19,6 +19,7 @@ my @files_to_exclude = ();
 my $dry_run;
 my $help;
 my $list;
+my $dont_push;
 my $dont_ignore;
 
 # This tool relies on `git status --porcelain`
@@ -74,7 +75,7 @@ sub format_option {
 sub print_help {
     # This is a mess
     printf(
-        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
+        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
         colored("gacp", $GREEN) . "\n" . "git add, commit & push in one go.",
         colored("USAGE:", $YELLOW) . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", $YELLOW),
@@ -86,6 +87,7 @@ sub print_help {
             "Don't auto exclude files specified in gacp ignore file",
             0, 0
         ),
+        format_option("np", "no-push", "No push (Only add and commit)", 0, 0),
         format_option("f", "files", "Files to add (git add)", 1, "-A"),
         format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
         colored("ARGS:", $YELLOW),
@@ -360,6 +362,7 @@ sub main {
         "list|l" => \$list,
         "dry|d" => \$dry_run,
         "no-ignore|ni" => \$dont_ignore,
+        "no-push|np" => \$dont_push,
         "files|f=s{1,}" => \@files_to_add,
         "exclude|e=s{1,}" => \@files_to_exclude,
         ) or die("Error in command line arguments\n");
@@ -452,7 +455,7 @@ sub main {
     if ($prev_return eq "0") {
         $prev_return = system($git_commit_command);
     }
-    if ($prev_return eq "0") {
+    if ($prev_return eq "0" && !$dont_push) {
         system($git_push_command);
     }
 }
