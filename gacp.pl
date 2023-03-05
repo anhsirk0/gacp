@@ -240,7 +240,9 @@ sub is_file_auto_ignored {
     if ($rel_path eq ".") { $file_path = $rel_top_path . "/" . $file_path }
 
     foreach my $i (@ignored_files) {
-        if ($file_path =~ m/^$i/) { return 1 }
+        my $rgx = qr/^$i$/;
+        if (-d $top_level . "/" . $i) { $rgx = qr/^$i/ }
+        if ($file_path =~ /$rgx/) { return 1 }
     }
 
     return 0
