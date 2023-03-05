@@ -162,9 +162,11 @@ sub get_heading {
 # -> $status = "??", $file_path = "new/file.pl"
 sub get_status_and_path {
     my ($line) = @_;
-    my ($status, $file_path) = $line =~ /([^\s]*?)\s+([^\s]*)/;
+    $line =~ s/\/$//; # remove trailing slash
+    my ($status, $file_path) = $line =~ /([^\s]*?)\s+([^\s]*)$/;
     return ($status, $file_path)
 }
+
 
 # Populate @dirs_to_add by choosing dir from @files_to_add
 # Populate @dirs_to_exclude by choosing dir from @files_to_exclude
@@ -176,10 +178,9 @@ sub get_dirs_from_files_arr {
     my (@files_arr) = @_;
     my @dirs = ();
     foreach my $f (@files_arr) {
-        if (-d $f) {
-            $f =~ s/$\///; # remove trailing slash
-            push(@dirs, $f)
-        }
+        unless (-d $f) { next }
+        $f =~ s/\/$//; # remove trailing slash
+        push(@dirs, $f)
     }
     return @dirs;
 }
@@ -198,14 +199,16 @@ sub get_ignored_files {
     my @ignored_files = ();
     my ($repo) = fileparse($top_level);
     my $ignore_file = $CONFIG_DIR . "/" . $repo . ".ignore";
-    unless (-f $ignore_file) { return @ignored_files }
+    unless (-f $ignore_file) { return () }
+
     open(FH, "<" . $ignore_file) or die "Unable to open $ignore_file";
     while(<FH>) {
         for ($_) {
-            s/\#.*//; # ignore comments
+            s/\#.*//;  # ignore comments
             s/\s+/ /g; # remove extra whitespace
-            s/^\s+//g; # strip left whitespace
-            s/\s+$//g; # strip right whitespace
+            s/^\s+//; # strip left whitespace
+            s/\s+$//; # strip right whitespace
+            s/\/$//;   # strip trailing slash
         }
         unless ($_) { next }
         push(@ignored_files, $_);
@@ -219,15 +222,70 @@ sub get_ignored_files {
 sub wanted {
     my $file_name = $File::Find::name;
     # my $file = (split "/", $file_name)[-1];
-    if (-f) {
-        push(@files_inside_new_dirs, $file_name)
-    }
+    unless (-f) { return }
+    push(@files_inside_new_dirs, $file_name);
 }
 
 
+# Check for auto excluding an file
+# return 1 if $file is in @ignored_files
+sub is_file_auto_ignored {
+    my ($file_path, $rel_path, @ignored_files) = @_;
+    unless (@ignored_files) { return 0 }
+
+    $rel_path =~ s/:\/://;
+    $file_path =~ s/:\/://;
+
+    my $rel_top_path = abs2rel(getcwd(), $top_level);
+    if ($rel_path eq ".") { $file_path = $rel_top_path . "/" . $file_path }
+
+    foreach my $i (@ignored_files) {
+        if ($file_path =~ m/^$i/) { return 1 }
+    }
+
+    return 0
+}
+
+# handle newly created dirs
+# recursively find files inside provide dir (newly created)
+# And return array of git_status type lines
+# Example:
+# ["?? new_dir/sub_dir/file.pl" ...]
+sub get_new_dir_git_status {
+    my ($file_path, $rel_path, @ignored_files) = @_;
+    my @new_dir_statuses = ();
+    @files_inside_new_dirs = ();
+
+    # unless (-d $rel_path) { return () } # if not a dir
+    find({ wanted => \&wanted }, $rel_path);
+    unless (@files_inside_new_dirs) { return () }
+
+    foreach my $f (@files_inside_new_dirs) {
+        my ($file_basename, $parent) = fileparse($f);
+        my ($cwd_basename) = fileparse(getcwd());
+        my ($top_level_basename) = fileparse($top_level);
+        if (
+            $parent =~ m/($cwd_basename|$top_level_basename)\/$/ ||
+            $parent =~ m/^\.\// ||
+            $cwd_basename eq $top_level_basename
+            ) {
+            $f =~ s/^\.\///;
+        }
+        if ($rel_path =~ m/^\.\.\// && !$relative_paths) {
+            $f =~ s/$rel_path\//:\/:$file_path\//;
+        }
+
+        if (is_file_auto_ignored($f, $rel_path, @ignored_files)) {
+            push(@files_to_exclude, $f);
+        }
+        push(@new_dir_statuses, $NEW_STATUS . " " . $f);
+    }
+    return @new_dir_statuses;
+}
+
 # This is the core of the whole script
-# Print $git_status but relative path to current dir
-# Can be used for completions
+# Updates @parsed_git_status
+# $git_status but relative path to current dir
 sub parse_git_status {
     # Read ignore file
     my @ignored_files = ();
@@ -236,57 +294,27 @@ sub parse_git_status {
     }
 
     foreach my $line (@git_status) {
-        @files_inside_new_dirs = ();
-        $line =~ s/^\s+//; # trim left whitespace
         my ($status, $file_path) = get_status_and_path($line);
         my $rel_path = abs2rel($top_level . "/" . $file_path);
-
-        if (@ignored_files) {
-            my $rgx = qr/^${file_path}$/;
-            if (-d $rel_path) {
-                my $dir = abs2rel(getcwd(), $top_level);
-                unless ($dir eq ".") {
-                    $rgx = qr/^${dir}/;
-                }
-            }
-            if (grep /$rgx/, @ignored_files) {
-                unless ($file_path eq $rel_path) {
-                    $file_path = ":/:" . $file_path;
-                }
-                if ($relative_paths) { $file_path = $rel_path }
-                push(@files_to_exclude, $file_path);
-                push(@parsed_git_status, $status . " " . $file_path);
-                next;
-            }
-        }
 
         # if a directory is newly created
         # git_status only lists the directory and not the files inside
         if (-d $rel_path) {
-            find({
-                wanted => \&wanted,
-                 }, $rel_path);
-        }
-        if (@files_inside_new_dirs) {
-            foreach my $f (@files_inside_new_dirs) {
-                my ($file_basename, $parent) = fileparse($f);
-                my ($cwd_basename) = fileparse(getcwd());
-                my ($top_level_basename) = fileparse($top_level);
-                if (
-                    $parent =~ m/($cwd_basename|$top_level_basename)\/$/ ||
-                    $parent =~ m/^\.\// ||
-                    $cwd_basename eq $top_level_basename
-                    ) {
-                    $f =~ s/^\.\///;
-                } elsif (!$relative_paths) {
-                    $f =~ s/$rel_path\//:\/:$file_path/;
-                }
-                push(@parsed_git_status, $status . " " . $f);
-            }
+            my @new_dir_status = get_new_dir_git_status(
+                $file_path,
+                $rel_path,
+                @ignored_files
+                );
+            if (@new_dir_status) { push(@parsed_git_status, @new_dir_status) }
             next;
         }
+
         if ($rel_path =~ m/^\.\.\// && !$relative_paths) {
             $rel_path = ":/:" . $file_path;
+        }
+
+        if (is_file_auto_ignored($file_path, $rel_path, @ignored_files)) {
+            push(@files_to_exclude, $rel_path);
         }
         push(@parsed_git_status, $status . " " . $rel_path);
     }
@@ -306,8 +334,7 @@ sub parse_git_status {
 #    will return references to these 2 arrays =>
 #    @files_to_add = [["M", "mod-file.pl"], ["D", "del-file.pl"]]
 #    @files_to_exclude = [["??", "new-file.pl"]]
-sub get_info (\@\@) {
-    my ($ref_files_to_add, $ref_files_to_exclude) = @_;
+sub get_info () {
     # these files will be git added # (@files_to_add - @files_to_exclude)
     my @added_files_info = ();
     my @excluded_files_info = ();
@@ -326,7 +353,7 @@ sub get_info (\@\@) {
             $max_width = length($file_path) + 14;
         }
 
-        if (grep /^$file_path$/, @{$ref_files_to_exclude}) {
+        if (grep /^$file_path$/, @files_to_exclude) {
             push(@excluded_files_info, [$status, $file_path]);
             next;
         }
@@ -344,7 +371,7 @@ sub get_info (\@\@) {
 
         if (
             $files_to_add[0] ne "-A" &&
-            !(grep /^(\.\/)?$file_path$/, @{$ref_files_to_add})
+            !(grep /^(\.\/)?$file_path$/, @files_to_add)
             ) {
             next
         }
@@ -410,10 +437,7 @@ sub main {
 
     unless (@files_to_add) { $files_to_add[0] = "-A" }
 
-    my ($added_files_info, $excluded_files_info) = get_info(
-        @files_to_add,
-        @files_to_exclude
-        );
+    my ($added_files_info, $excluded_files_info) = get_info();
 
     my @added_files = ();
     if (@$added_files_info) {
