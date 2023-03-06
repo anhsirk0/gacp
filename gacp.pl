@@ -45,7 +45,7 @@ my $NEW_COLOR = "bright_cyan";           # for newly created files
 my $EXC_COLOR = $YELLOW;          # for excluded files
 my $STG_COLOR = "bright_magenta"; # for staged files
 my $STR_COLOR = "bright_blue";    # for string args
-my $DOC_COLOR = "bright_white";
+my $DOC_COLOR = "bright_black";
 
 # git status codes
 my $ADDED_STATUS    = "A";
