@@ -352,7 +352,7 @@ sub get_info () {
         }
 
         if (length($file_path) + 14 > $max_width) {
-            $max_width = length($file_path) + 14;
+            $max_width = length($file_path) + 8;
         }
 
         if (grep /^$file_path$/, @files_to_exclude) {
