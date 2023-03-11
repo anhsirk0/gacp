@@ -76,7 +76,10 @@ sub format_option {
 sub print_help {
     # This is a mess
     printf(
-        "%s\n\n%s\n\n%s \n%s%s%s%s%s%s%s%s \n%s\n%s %s\n%s\n%s\n%s %s\n%s %s\n",
+        "%s\n\n%s\n\n" .            # About, Usage
+        "%s \n%s%s%s%s%s%s%s%s\n" . # Options list
+        "%s\n%s %s\n " .            # Args
+        "\n%s\n%s\n%s %s\n%s %s\n", # Examples
         colored("gacp", $GREEN) . "\n" . "git add, commit & push in one go.",
         colored("USAGE:", $YELLOW) . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", $YELLOW),
@@ -95,7 +98,7 @@ sub print_help {
         colored("ARGS:", $YELLOW),
         colored("\t<MESSAGE>", $GREEN),
         "\t\tCommit message [default: \"updated README\"]",
-        colored("EXAMPLE:", $YELLOW),
+        colored("EXAMPLES:", $YELLOW),
         "\tgacp " . colored("\"First Commit\"", $STR_COLOR),
         "\tgacp " . colored("\"updated README\"", $STR_COLOR),
         "-f " . colored("README.md", "underline"),
