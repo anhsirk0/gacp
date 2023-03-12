@@ -65,7 +65,7 @@ my $NEW_STATUS      = "??";
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
     my $tabs = "\t" . (length($short . $long . $long x $args) < 11 && "\t");
-    my $text = "\t" . colored($short, $GREEN);
+    my $text = "\t" . colored("-" . $short, $GREEN);
     $text .= ", " . colored("--" . $long . " ", $GREEN);
     $text .= ($args > 0 && colored("<" . uc $long . ">", $GREEN)) . $tabs;
     $text .= $desc . ($default ne 0 && " [default: " . $default . "]");
