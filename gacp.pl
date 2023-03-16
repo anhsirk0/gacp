@@ -9,7 +9,7 @@ use File::Basename qw( fileparse );
 use File::Find;
 use File::Spec::Functions qw( abs2rel );
 use Getopt::Long;
-use List::Util qw( max );
+use List::Util qw( min max );
 use Term::ANSIColor;
 use warnings;
 
@@ -120,13 +120,6 @@ sub print_help {
 #     deleted_file.pl      (deleted)
 sub print_file {
     my ($idx, $status, $file_name, $color) = @_;
-    my $available_cols = `tput cols`;
-    # if `tput cols` return non-zero exit status code
-    if ($?) { $available_cols = 88; }
-    $available_cols = int($available_cols);
-
-    if ($COLS + 8 > $available_cols) { $COLS = $available_cols; }
-
     my $label;
     if ($status eq $NEW_STATUS) {
         $color = $color || $NEW_COLOR;
@@ -384,7 +377,18 @@ sub get_info () {
         push(@added_files_info, [$status, $file_path]);
     }
 
+    # Update $COLS
     $COLS = $max_width;
+    my $available_cols = `tput cols`;
+    # if `tput cols` return non-zero exit status code
+    if ($?) { $available_cols = 90; }
+    $available_cols = min(int($available_cols), 100) - 10;
+    if (($COLS + 10) * 2 < $available_cols) {
+        $COLS = $COLS + 20
+    } else {
+        $COLS = max($available_cols, $COLS);
+    }
+
     return (\@added_files_info, \@excluded_files_info);
 }
 
