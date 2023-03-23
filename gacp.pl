@@ -63,6 +63,14 @@ sub inside_a_git_repo {
 # This returns reference to a HASH
 sub to_git_file {
     my ($status, $abs_path, $rel_path) = @_;
+    # if paths has space in them
+    if ($abs_path =~ m/ /) {
+        $abs_path = q/"/ . $abs_path . q/"/;
+    }
+    if ($rel_path =~ m/ /) {
+        $rel_path = q/"/ . $rel_path . q/"/;
+    }
+
     return {
         "status" => $status,
             "abs_path" => $abs_path,
@@ -136,8 +144,11 @@ sub parse_git_status {
     return () unless $git_status;
 
     foreach my $line (split "\n", $git_status) {
-        my ($status, $file_path) = $line =~ /([^\s]*?)\s+([^\s]*)$/;
+        my ($status, $file_path) = $line =~ /([^\s]*?)\s+(.*)$/;
+        $file_path =~ s/"//g;
+
         my $abs_path = catfile($TOP_LEVEL, $file_path);
+
         unless (-d $abs_path) {
             push(@git_files,
                  to_git_file($status, $abs_path, to_git_path($abs_path)));
@@ -158,7 +169,12 @@ sub is_git_file_in {
     for (@$arr_ref) {
         my $file_path = $$_{abs_path};
         my $git_file_path = $$git_file{abs_path};
+
+        # if files that has spaces in them, remove their quotes
+        $file_path =~ s/"//g;
+        $git_file_path =~ s/"//g;
         return 1 if (-f $file_path && $file_path eq $git_file_path);
+
         # $file_path is a dir
         my $dir = $file_path . $PATH_SEP;
         return 1 if ($git_file_path =~ m/^$dir/)
@@ -224,7 +240,7 @@ sub print_git_file {
         $color ||= $COLOR{GREY};
         $label = $status;
     }
-    my $format = "%6d %-50s %12s\n";
+    my $format = "%6d) %-50s %12s\n";
     print colored(sprintf($format, $idx, $file, "($label)"), $color);
 }
 
