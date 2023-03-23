@@ -166,13 +166,15 @@ sub parse_git_status {
 
 sub is_git_file_in {
     my ($arr_ref, $git_file) = @_;
+    my $git_file_path = $$git_file{abs_path};
+    # if files that has spaces in them, remove their quotes
+    $git_file_path =~ s/"//g;
+
     for (@$arr_ref) {
         my $file_path = $$_{abs_path};
-        my $git_file_path = $$git_file{abs_path};
 
         # if files that has spaces in them, remove their quotes
         $file_path =~ s/"//g;
-        $git_file_path =~ s/"//g;
         return 1 if (-f $file_path && $file_path eq $git_file_path);
 
         # $file_path is a dir
