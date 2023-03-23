@@ -144,7 +144,7 @@ sub parse_git_status {
     return () unless $git_status;
 
     foreach my $line (split "\n", $git_status) {
-        my ($status, $file_path) = $line =~ /([^\s]*?)\s+(.*)$/;
+        my ($status, $file_path) = $line =~ /^\s*([^\s]*?)\s+(.*)$/;
         $file_path =~ s/"//g;
 
         my $abs_path = catfile($TOP_LEVEL, $file_path);
@@ -320,9 +320,16 @@ sub main {
     @EXCLUDED = map { arg_to_git_file $_ } @exclude_files;
 
     my @parsed_git_status = parse_git_status();
+
+    if ($LIST) {
+        for my $f (@parsed_git_status) {
+            print $$f{rel_path} . "\n";
+        }
+        exit;
+    }
+
     my ($files_to_add_ref, $files_to_exclude_ref) = get_added_excluded_files(
         @parsed_git_status);
-
     my $total_added = scalar(@$files_to_add_ref);
     if ($total_added) {
         print colored(get_heading("Added", $total_added), $COLOR{GREY});
