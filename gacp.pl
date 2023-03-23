@@ -28,6 +28,7 @@ my $PATH_SEP       = catfile("", "");
 my @ADDED          = ();
 my @EXCLUDED       = ();
 my $COMMIT_MESSAGE = $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
+my $MAX_COLS       = 30;
 
 
 # colors
@@ -189,6 +190,8 @@ sub get_added_excluded_files {
     my @files_to_add = ();
     my @files_to_exclude = ();
     for my $file (@_) {
+        my $chars = length($$file{rel_path});
+        $MAX_COLS = $chars if $chars > $MAX_COLS;
         if (is_git_file_in(\@EXCLUDED, $file)) {
             push(@files_to_exclude, $file);
             next;
@@ -242,7 +245,7 @@ sub print_git_file {
         $color ||= $COLOR{GREY};
         $label = $status;
     }
-    my $format = "%6d) %-50s %12s\n";
+    my $format = "%6d) %-" . $MAX_COLS . "s %12s\n";
     print colored(sprintf($format, $idx, $file, "($label)"), $color);
 }
 
