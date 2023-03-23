@@ -63,7 +63,7 @@ sub inside_a_git_repo {
 # This returns reference to a HASH
 sub to_git_file {
     my ($status, $abs_path, $rel_path) = @_;
-    return {    
+    return {
         "status" => $status,
             "abs_path" => $abs_path,
             "rel_path" => $rel_path
@@ -73,7 +73,7 @@ sub to_git_file {
 # convert arguments to empty git_files
 # This returns reference to a HASH
 sub arg_to_git_file {
-    my ($rel_path) = @_;    
+    my ($rel_path) = @_;
     $rel_path =~ s/^:$PATH_SEP:/$TOP_LEVEL$PATH_SEP/;
     return to_git_file("", abs_path($rel_path), $rel_path)
 }
@@ -98,7 +98,7 @@ sub get_auto_excluded_files {
             s/\s+$//;  # strip right whitespace
             s/\/$//;   # strip trailing slash
         }
-        next unless $_;        
+        next unless $_;
         push(@auto_excluded_files, $_);
     }
     close(FH);
@@ -177,7 +177,7 @@ sub get_added_excluded_files {
         }
         if (is_git_file_in(\@ADDED, $file) || scalar(@ADDED) == 0) {
             push(@files_to_add, $file);
-        }        
+        }
     }
     return (\@files_to_add, \@files_to_exclude)
 }
@@ -186,6 +186,7 @@ sub git_add_commit_push {
     my ($added_files) = @_;
     return unless $added_files;
 
+    print "\n";
     my $prev_return = system("git add " . $added_files);
     return unless ($prev_return eq "0");
 
@@ -203,7 +204,7 @@ sub get_heading {
 sub print_git_file {
     my ($git_file, $idx, $color) = @_;
     my $label;
-    
+
     my $status = $$git_file{status};
     my $file = $$git_file{rel_path};
 
@@ -229,10 +230,11 @@ sub print_git_file {
 
 sub format_option {
     my ($short, $long, $desc, $args, $default) = @_;
+    my $GREEN = $COLOR{GREEN};
     my $tabs = "\t" . (length($short . $long . $long x $args) < 11 && "\t");
-    my $text = "\t" . colored("-" . $short, $COLOR{GREEN});
-    $text .= ", " . colored("--" . $long . " ", $COLOR{GREEN});
-    $text .= ($args > 0 && colored("<" . uc $long . ">", $COLOR{GREEN})) . $tabs;
+    my $text = "\t" . colored("-" . $short, $GREEN);
+    $text .= ", " . colored("--" . $long . " ", $GREEN);
+    $text .= ($args > 0 && colored("<" . uc $long . ">", $GREEN)) . $tabs;
     $text .= $desc . ($default ne 0 && " [default: " . $default . "]");
     return $text . "\n";
 }
@@ -244,7 +246,7 @@ sub print_help_and_exit {
         "%s \n%s%s%s%s%s%s%s%s\n" . # Options list
         "%s\n%s %s\n " .            # Args
         "\n%s\n%s\n%s %s\n%s %s\n", # Examples
-        colored("gacp", $COLOR{GREEN}) . "\n" . "git add, commit & push in one go.",
+        colored("gacp", $COLOR{GREEN}) . "\ngit add, commit & push in one go.",
         colored("USAGE:", $COLOR{YELLOW}) . "\n\t" . "gacp [ARGS] [OPTIONS]",
         colored("OPTIONS:", $COLOR{YELLOW}),
         format_option("h", "help", "Print help information", 0, 0),
@@ -288,7 +290,8 @@ sub parse_args {
 
 sub main {
     parse_args();
-    die(colored("Not in a git repository", $COLOR{RED}) . "\n") unless inside_a_git_repo();
+    die(colored("Not in a git repository", $COLOR{RED}) . "\n")
+        unless inside_a_git_repo();
 
     set_top_level();
     $COMMIT_MESSAGE = $ARGV[0] || $COMMIT_MESSAGE;
@@ -316,7 +319,8 @@ sub main {
     if ($total_excluded) {
         print colored(get_heading("Excluded", $total_excluded), $COLOR{GREY});
         for my $idx (0 .. $total_excluded - 1) {
-            print_git_file($$files_to_exclude_ref[$idx], $idx + 1, $COLOR{YELLOW});
+            print_git_file($$files_to_exclude_ref[$idx], $idx + 1,
+                           $COLOR{YELLOW});
         }
         print "\n";
     }
