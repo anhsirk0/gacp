@@ -349,11 +349,12 @@ sub main {
         print "\n";
     }
 
+    die(`git status`) unless $total_added;
+
     print colored("Commit message:", $COLOR{GREY}) . "\n";
     print colored(sprintf("%6s%s", "", $COMMIT_MESSAGE), $COLOR{BLUE}) . "\n";
 
     exit if $DRY_RUN;
-    die(colored("\nNo files to add", $COLOR{RED}) . "\n") unless $total_added;
 
     my $added_files = join(" ", map { $$_{rel_path} } @$files_to_add_ref);
     git_add_commit_push($added_files);
