@@ -5,11 +5,9 @@
 
 use strict;
 use Cwd qw( getcwd abs_path );
-use File::Basename qw( fileparse );
 use File::Find;
 use File::Spec::Functions qw( abs2rel catfile splitpath );
 use Getopt::Long;
-use List::Util qw( min max );
 use Term::ANSIColor;
 use warnings;
 
@@ -29,7 +27,6 @@ my @ADDED          = ();
 my @EXCLUDED       = ();
 my $COMMIT_MESSAGE = $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
 my $MAX_COLS       = 30;
-
 
 # colors
 my %COLOR = (
@@ -131,8 +128,7 @@ sub to_git_path {
 # wanted sub for finding files
 sub wanted {
     my $file_name = $File::Find::name;
-    return unless (-f);
-    push(@files_inside_new_dirs, $file_name);
+    push(@files_inside_new_dirs, $file_name) if (-f);
 }
 
 # Parse git_status line by line,
@@ -144,7 +140,7 @@ sub parse_git_status {
     chomp(my $git_status = `git status --porcelain`);
     return () unless $git_status;
 
-    foreach my $line (split "\n", $git_status) {
+    for my $line (split "\n", $git_status) {
         my ($status, $file_path) = $line =~ /^\s*([^\s]*?)\s+(.*)$/;
         $file_path =~ s/"//g;
 
@@ -158,7 +154,7 @@ sub parse_git_status {
         # $abs_path is a directory from this point
         @files_inside_new_dirs = ();
         find({ wanted => \&wanted }, $abs_path);
-        foreach my $f (@files_inside_new_dirs) {
+        for my $f (@files_inside_new_dirs) {
             push(@git_files, to_git_file($status, $f, to_git_path($f)));
         }
     }
