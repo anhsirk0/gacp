@@ -349,7 +349,7 @@ sub main {
         print "\n";
     }
 
-    die(`git status`) unless $total_added;
+    die(colored("Nothing to add", $COLOR{RED}) . "\n") unless $total_added;
 
     print colored("Commit message:", $COLOR{GREY}) . "\n";
     print colored(sprintf("%6s%s", "", $COMMIT_MESSAGE), $COLOR{BLUE}) . "\n";
