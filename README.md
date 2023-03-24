@@ -124,28 +124,26 @@ git commit -m "Pushing all files except README"
 git push
 ```
 
-## Limitations
-You can't add files that are not in current directory by specifying relative path (unless you pass `--relative-paths` or `-r` flag)  
-Examples:  
+## Supported ways to add/exclude files
 ```text
-gacp -f ../some-file.pl     # will NOT work
+gacp -f ../some-file.pl
 ```
 ```text
-gacp -f ../some-file.pl -r  # will work
+gacp -f ../some-file.pl
 ```
 ```text
-gacp -f :/:src/some-file.pl # will work
+gacp -f :/:src/some-file.pl
 ```
 ```text
-gacp -f ./some-file.pl      # will work
+gacp -f ./some-file.pl
 ```
 ```text
-gacp -f some-file.pl        # will work
+gacp -f some-file.pl
 ```
 ```text
-gacp -f ./dir/some-file.pl  # will work
+gacp -f ./dir/some-file.pl
 ```
 ```text
-gacp -f dir/some-file.pl    # will work
+gacp -f dir/some-file.pl
 ```
 
