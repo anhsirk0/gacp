@@ -172,9 +172,9 @@ sub is_git_file_in {
 
         # if files that has spaces in them, remove their quotes
         $file_path =~ s/"//g;
-        return 1 if (-f $file_path && $file_path eq $git_file_path);
+        return 1 if ($file_path eq $git_file_path);
 
-        # $file_path is a dir
+        # if $file_path is a dir
         my $dir = $file_path . $PATH_SEP;
         return 1 if ($git_file_path =~ m/^$dir/)
     }
