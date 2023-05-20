@@ -58,12 +58,13 @@ To change default git message add $GACP_DEFAULT_MESSAGE var to environment
 export GACP_DEFAULT_MESSAGE="My default git commit message"
 ```
 
-### Auto Exclude files via gacp ignore file
-To add files to exclude automatically (like .gitignore), create `~/.config/gacp/repo_name.ignore` file (on windows create file under `$APPDATA`\gacp\repo.ignore)  
-Example: to always exclude `src/environment.ts` from repo `react-app`  
-Create file `~/.config/gacp/react-app.ignore` with contents
+### Auto Exclude files via gacp exclude file
+To add files to exclude automatically (like .gitignore), create `~/.config/gacp/gacp.exclude` file (on windows create file under `$APPDATA`\gacp\gacp.exclude)  
+
+Example:
 ```text
-src/environment.ts
+# Repo's absolute path           =  comma separated files/dirs
+/home/user/projects/some-project = src/environment.ts, new-dir, some-dir/new
 # any number of files can be added here
 ```
 you can provide `--no-ignore` or `-ni` flag if you want to add and commit these files
