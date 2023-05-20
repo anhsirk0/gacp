@@ -84,7 +84,7 @@ sub arg_to_git_file {
     return to_git_file("", abs_path($rel_path), $rel_path)
 }
 
-# Read repo_name.ignore file and return file_paths
+# Read config file (gacp.exclude) and return file_paths
 sub get_auto_excluded_files {
     my @auto_excluded_files = ();
     my $data_dir = ($^O eq "MSWin32") ? $ENV{APPDATA} :
@@ -92,7 +92,7 @@ sub get_auto_excluded_files {
     return () unless $data_dir;
 
     my ($_volume, $_dir, $repo_name) = splitpath($TOP_LEVEL);
-    my $ignore_file = catfile($data_dir, "gacp", $repo_name . ".ignore");
+    my $ignore_file = catfile($data_dir, "gacp", "gacp.exclude");
     return () unless (-f $ignore_file);
 
     open(FH, "<", $ignore_file) or die "Unable to open $ignore_file\n";
@@ -100,12 +100,19 @@ sub get_auto_excluded_files {
         for ($_) {
             s/\#.*//;  # ignore comments
             s/\s+/ /g; # remove extra whitespace
-            s/^\s+//;  # strip left whitespace
-            s/\s+$//;  # strip right whitespace
+            s/(^\s+|\s+$)//;  # strip left-right whitespace
             s/\/$//;   # strip trailing slash
         }
-        next unless $_;
-        push(@auto_excluded_files, $_);
+        next unless $_ =~ m/$TOP_LEVEL\s+=/;
+        for ($_) {
+            s/^.*=//;
+            s/,\s+/,/g;
+            s/,+/,/g;
+            s/^\s+//;  # strip left whitespace
+            s/(^,|,$)//g;
+        }
+        @auto_excluded_files = split ",", $_;
+        last;
     }
     close(FH);
 
