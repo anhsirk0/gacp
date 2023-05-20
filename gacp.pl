@@ -104,11 +104,11 @@ sub get_auto_excluded_files {
             s/\/$//;   # strip trailing slash
         }
         next unless $_ =~ m/$TOP_LEVEL\s+=/;
-        for ($_) {
+        for ($_) { # some more cleaning to get files
             s/^.*=//;
             s/,\s+/,/g;
             s/,+/,/g;
-            s/^\s+//;  # strip left whitespace
+            s/^\s+//;
             s/(^,|,$)//g;
         }
         @auto_excluded_files = split ",", $_;
