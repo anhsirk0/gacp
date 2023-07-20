@@ -30,13 +30,13 @@ my $MAX_COLS       = 30;
 
 # colors
 my %COLOR = (
-    "GREEN"    => "bright_green",
-    "YELLOW"   => "yellow",
-    "GREY"     => "bright_black",
-    "MAGENTA"   => "bright_magenta",
-    "RED"  => "bright_red",
-    "CYAN"      => "bright_cyan",
-    "BLUE"     => "bright_blue"
+    "GREEN"   => "bright_green",
+    "YELLOW"  => "yellow",
+    "GREY"    => "bright_white",
+    "MAGENTA" => "bright_magenta",
+    "RED"     => "bright_red",
+    "CYAN"    => "bright_cyan",
+    "BLUE"    => "bright_blue"
     );
 
 # git status codes
@@ -295,7 +295,7 @@ sub print_help_and_exit {
         "\tgacp " . colored("\"Pushing all except new-file.pl\"", $COLOR{BLUE}),
         "-e " . colored("new-file.pl", "underline"),
         );
-    exit
+    exit;
 }
 
 sub parse_args {
@@ -367,4 +367,4 @@ sub main {
     git_add_commit_push($added_files);
 }
 
-main()
+main();
