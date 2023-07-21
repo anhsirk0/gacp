@@ -62,12 +62,8 @@ sub inside_a_git_repo {
 sub to_git_file {
     my ($status, $abs_path, $rel_path) = @_;
     # if paths has space in them
-    if ($abs_path =~ m/ /) {
-        $abs_path = q/"/ . $abs_path . q/"/;
-    }
-    if ($rel_path =~ m/ /) {
-        $rel_path = q/"/ . $rel_path . q/"/;
-    }
+    $abs_path = q/"/ . $abs_path . q/"/ if ($abs_path =~ m/ /);
+    $rel_path = q/"/ . $rel_path . q/"/ if ($rel_path =~ m/ /);
 
     return {
         "status" => $status,
@@ -97,20 +93,9 @@ sub get_auto_excluded_files {
 
     open(FH, "<", $ignore_file) or die "Unable to open $ignore_file\n";
     while(<FH>) {
-        for ($_) {
-            s/\#.*//;  # ignore comments
-            s/\s+/ /g; # remove extra whitespace
-            s/(^\s+|\s+$)//;  # strip left-right whitespace
-            s/\/$//;   # strip trailing slash
-        }
+        s/\#.*//, s/\s+/ /g, s/(^\s+|\s+$)//, s/\/$// for ($_);
         next unless $_ =~ m/$TOP_LEVEL\s+=/;
-        for ($_) { # some more cleaning to get files
-            s/^.*=//;
-            s/,\s+/,/g;
-            s/,+/,/g;
-            s/^\s+//;
-            s/(^,|,$)//g;
-        }
+        s/^.*=//, s/,\s+/,/g, s/,+/,/g, s/^\s+//, s/(^,|,$)//g for ($_);
         @auto_excluded_files = split ",", $_;
         last;
     }
@@ -192,7 +177,7 @@ sub is_git_file_in {
 sub get_added_excluded_files {
     my @files_to_add = ();
     my @files_to_exclude = ();
-    for my $file (@_) {
+    foreach my $file (@_) {
         my $chars = length($$file{rel_path});
         $MAX_COLS = $chars if $chars > $MAX_COLS;
         if (is_git_file_in(\@EXCLUDED, $file)) {
@@ -264,7 +249,6 @@ sub format_option {
 }
 
 sub print_help_and_exit {
-    # This is a mess
     printf(
         "%s\n\n%s\n\n" .            # About, Usage
         "%s \n%s%s%s%s%s%s%s%s\n" . # Options list
@@ -330,9 +314,7 @@ sub main {
     my @parsed_git_status = parse_git_status();
 
     if ($LIST) {
-        for my $f (@parsed_git_status) {
-            print $$f{rel_path} . "\n";
-        }
+        print((join "\n", map { $$_{rel_path} } @parsed_git_status) . "\n");
         exit;
     }
 
