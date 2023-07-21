@@ -1,6 +1,11 @@
 # gacp
 git add, commit and push in one go.
 
++ Git repo on Codeberg: <https://codeberg.org/anhsirk0/gacp>
+  - Mirrors:
+    + GitHub: <https://github.com/anhsirk0/gacp>
+
+
 ## About
 gacp is a wrapper around `git` to make commiting and pushing files convenient.
 
