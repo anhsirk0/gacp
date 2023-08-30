@@ -25,7 +25,8 @@ my $TOP_LEVEL;
 my $PATH_SEP       = catfile("", "");
 my @ADDED          = ();
 my @EXCLUDED       = ();
-my $COMMIT_MESSAGE = $ENV{GACP_DEFAULT_MESSAGE} || "updated README";
+my $USE_EDITOR_MSG = "GACP_USE_EDITOR";
+my $COMMIT_MESSAGE = $ENV{GACP_DEFAULT_MESSAGE} || $USE_EDITOR_MSG;
 my $MAX_COLS       = 30;
 
 # colors
@@ -66,9 +67,9 @@ sub to_git_file {
     $rel_path = q/"/ . $rel_path . q/"/ if ($rel_path =~ m/ /);
 
     return {
-        "status" => $status,
-            "abs_path" => $abs_path,
-            "rel_path" => $rel_path
+        "status"   => $status,
+        "abs_path" => $abs_path,
+        "rel_path" => $rel_path
     }
 }
 
@@ -135,9 +136,7 @@ sub parse_git_status {
     for my $line (split "\n", $git_status) {
         my ($status, $file_path) = $line =~ /^\s*([^\s]*?)\s+(.*)$/;
         $file_path =~ s/"//g;
-
         my $abs_path = catfile($TOP_LEVEL, $file_path);
-
         unless (-d $abs_path) {
             push(@git_files,
                  to_git_file($status, $abs_path, to_git_path($abs_path)));
@@ -156,16 +155,12 @@ sub parse_git_status {
 sub is_git_file_in {
     my ($arr_ref, $git_file) = @_;
     my $git_file_path = $$git_file{abs_path};
-    # if files that has spaces in them, remove their quotes
     $git_file_path =~ s/"//g;
 
     for (@$arr_ref) {
         my $file_path = $$_{abs_path};
-
-        # if files that has spaces in them, remove their quotes
         $file_path =~ s/"//g;
         return 1 if ($file_path eq $git_file_path);
-
         # if $file_path is a dir
         my $dir = $file_path . $PATH_SEP;
         return 1 if ($git_file_path =~ m/^$dir/)
@@ -199,7 +194,11 @@ sub git_add_commit_push {
     my $prev_return = system("git add " . $added_files);
     return unless ($prev_return eq "0");
 
-    $prev_return = system("git commit -m '" . $COMMIT_MESSAGE . "'");
+    my $commit_cmd = "git commit";
+    unless ($COMMIT_MESSAGE eq $USE_EDITOR_MSG) {
+        $commit_cmd .= qq{ -m '"$COMMIT_MESSAGE"'}
+    }
+    $prev_return = system($commit_cmd);
     return unless ($prev_return eq "0" && !$DONT_PUSH);
 
     system("git push");
@@ -271,7 +270,7 @@ sub print_help_and_exit {
         format_option("e", "exclude", "Files to exclude (not to add)", 1, 0),
         colored("ARGS:", $COLOR{YELLOW}),
         colored("\t<MESSAGE>", $COLOR{GREEN}),
-        "\t\tCommit message [default: \"updated README\"]",
+        "\t\tCommit message",
         colored("EXAMPLES:", $COLOR{YELLOW}),
         "\tgacp " . colored("\"First Commit\"", $COLOR{BLUE}),
         "\tgacp " . colored("\"updated README\"", $COLOR{BLUE}),
@@ -340,8 +339,10 @@ sub main {
 
     die(colored("Nothing to add", $COLOR{RED}) . "\n") unless $total_added;
 
-    print colored("Commit message:", $COLOR{GREY}) . "\n";
-    print colored(sprintf("%6s%s", "", $COMMIT_MESSAGE), $COLOR{BLUE}) . "\n";
+    unless ($COMMIT_MESSAGE eq $USE_EDITOR_MSG) {
+        print colored("Commit message:", $COLOR{GREY}) . "\n";
+        print colored(sprintf("%6s%s\n", "", $COMMIT_MESSAGE), $COLOR{BLUE});
+    }
 
     exit if $DRY_RUN;
 
