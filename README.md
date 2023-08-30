@@ -50,7 +50,7 @@ OPTIONS:
 	e, --exclude <EXCLUDE>	Files to exclude (not to add)
 
 ARGS:
-	<MESSAGE> 		Commit message [default: "updated README"]
+	<MESSAGE> 		Commit message
 EXAMPLE:
 	gacp "First Commit"
 	gacp "updated README" -f README.md
@@ -102,19 +102,14 @@ $ gacp "First Commit" -dry
 Added files:
 	gacp.pl	(new)
 
-git add gacp.pl
-git commit -m "First Commit"
-git push
+Commit Message:
+	First Commit
 ```
 
 ```text
 $ gacp -f README.md -dry
 Added files:
 	README.md	(new)
-
-git add README.md
-git commit -m "updated README"
-git push
 ```
 
 ```text
@@ -125,9 +120,8 @@ Added files:
 Excluded files:
 	README.md	(new)
 
-git add gacp.pl
-git commit -m "Pushing all files except README"
-git push
+Commit Message:
+	Pushing all files except README
 ```
 
 ## Supported ways to add/exclude files

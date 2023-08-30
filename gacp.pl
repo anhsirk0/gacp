@@ -196,12 +196,13 @@ sub git_add_commit_push {
 
     my $commit_cmd = "git commit";
     unless ($COMMIT_MESSAGE eq $USE_EDITOR_MSG) {
-        $commit_cmd .= qq{ -m q{$COMMIT_MESSAGE}}
+        $commit_cmd .= qq{ -m } . "'" . qq{$COMMIT_MESSAGE} . "'";
     }
+    print $commit_cmd;
     $prev_return = system($commit_cmd);
     return unless ($prev_return eq "0" && !$DONT_PUSH);
 
-    system("git push");
+    # system("git push");
 }
 
 sub get_heading {
