@@ -22,7 +22,6 @@ my $DONT_IGNORE;
 my $RELATIVE_PATHS;
 
 my $TOP_LEVEL;
-my $PATH_SEP       = catfile("", "");
 my @ADDED          = ();
 my @EXCLUDED       = ();
 my $USE_EDITOR_MSG = "GACP_USE_EDITOR";
@@ -77,19 +76,15 @@ sub to_git_file {
 # This returns reference to a HASH
 sub arg_to_git_file {
     my ($rel_path) = @_;
-    $rel_path =~ s/^:$PATH_SEP:/$TOP_LEVEL$PATH_SEP/;
+    $rel_path =~ s/^:\/:/$TOP_LEVEL\//;
     return to_git_file("", abs_path($rel_path), $rel_path)
 }
 
 # Read config file (gacp.exclude) and return file_paths
 sub get_auto_excluded_files {
     my @auto_excluded_files = ();
-    my $data_dir = ($^O eq "MSWin32") ? $ENV{APPDATA} :
-        catfile($ENV{HOME}, ".config");
-    return () unless $data_dir;
-
     my ($_volume, $_dir, $repo_name) = splitpath($TOP_LEVEL);
-    my $ignore_file = catfile($data_dir, "gacp", "gacp.exclude");
+    my $ignore_file = catfile($ENV{HOME}, ".config", "gacp", "gacp.exclude");
     return () unless (-f $ignore_file);
 
     open(FH, "<", $ignore_file) or die "Unable to open $ignore_file\n";
@@ -112,9 +107,7 @@ sub to_git_path {
     return $rel_path if $RELATIVE_PATHS;
 
     my $rel_path_to_top_level = abs2rel($path, $TOP_LEVEL);
-    if ($rel_path =~ m/^\.\./) {
-        $rel_path = ":$PATH_SEP:" . $rel_path_to_top_level;
-    }
+    $rel_path = ":/:" . $rel_path_to_top_level if ($rel_path =~ m/^\.\./);
     return $rel_path
 }
 
@@ -162,7 +155,7 @@ sub is_git_file_in {
         $file_path =~ s/"//g;
         return 1 if ($file_path eq $git_file_path);
         # if $file_path is a dir
-        my $dir = $file_path . $PATH_SEP;
+        my $dir = $file_path . "/";
         return 1 if ($git_file_path =~ m/^$dir/)
     }
     return 0
@@ -304,7 +297,7 @@ sub main {
     $COMMIT_MESSAGE = $ARGV[0] || $COMMIT_MESSAGE;
     unless ($DONT_IGNORE) {
         for (get_auto_excluded_files()) {
-            push(@exclude_files, abs2rel($TOP_LEVEL . $PATH_SEP . $_));
+            push(@exclude_files, abs2rel($TOP_LEVEL . "/" . $_));
         }
     }
     @ADDED = map { arg_to_git_file $_ } @add_files;
