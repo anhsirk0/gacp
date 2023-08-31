@@ -5,9 +5,9 @@ git add, commit and push in one go.
   - Mirrors:
     + GitHub: <https://github.com/anhsirk0/gacp>
 
-
 ## About
 gacp is a wrapper around `git` to make commiting and pushing files convenient.
+> works only on unix-like systems (Linux, BSD, MacOS)
 
 ## Installation
 Its just a perl script
@@ -64,7 +64,7 @@ export GACP_DEFAULT_MESSAGE="My default git commit message"
 ```
 
 ### Auto Exclude files via gacp exclude file
-To add files to exclude automatically (like .gitignore), create `~/.config/gacp/gacp.exclude` file (on windows create file under `$APPDATA`\gacp\gacp.exclude)  
+To add files to exclude automatically (like .gitignore), create `~/.config/gacp/gacp.exclude` file  
 
 Example:
 ```text
