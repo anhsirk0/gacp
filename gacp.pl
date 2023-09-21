@@ -54,7 +54,7 @@ sub set_top_level {
 }
 
 sub inside_a_git_repo {
-    return `git rev-parse --is-inside-work-tree 2> /dev/null` eq "true\n"
+    return `git rev-parse --is-inside-work-tree 2> /dev/null` eq "true\n";
 }
 
 # This is used as a Type
@@ -89,10 +89,10 @@ sub get_auto_excluded_files {
 
     open(FH, "<", $ignore_file) or die "Unable to open $ignore_file\n";
     while(<FH>) {
-        s/\#.*//, s/\s+/ /g, s/(^\s+|\s+$)//, s/\/$// for ($_);
-        next unless $_ =~ m/$TOP_LEVEL\s+=/;
-        s/^.*=//, s/,\s+/,/g, s/,+/,/g, s/^\s+//, s/(^,|,$)//g for ($_);
-        @auto_excluded_files = split ",", $_;
+        s/\#.*//, s/\s+/ /g, s/(^\s+|\s+$)//, s/\/$//;
+        next unless (m/$TOP_LEVEL\s+=/);
+        s/^.*=//, s/,\s+/,/g, s/,+/,/g, s/^\s+//, s/(^,|,$)//g;
+        @auto_excluded_files = split ",";
         last;
     }
     close(FH);
@@ -158,7 +158,7 @@ sub is_git_file_in {
         my $dir = $file_path . "/";
         return 1 if ($git_file_path =~ m/^$dir/)
     }
-    return 0
+    return 0;
 }
 
 # Returns reference to files_to_add and files_to_exclude
@@ -176,7 +176,7 @@ sub get_added_excluded_files {
             push(@files_to_add, $file);
         }
     }
-    return (\@files_to_add, \@files_to_exclude)
+    return (\@files_to_add, \@files_to_exclude);
 }
 
 sub git_add_commit_push {
@@ -315,17 +315,16 @@ sub main {
     my $total_added = scalar(@$files_to_add_ref);
     if ($total_added) {
         print colored(get_heading("Added", $total_added), $COLOR{GREY});
-        for my $idx (0 .. $total_added - 1) {
-            print_git_file($$files_to_add_ref[$idx], $idx + 1);
+        for my $i (0 .. $total_added - 1) {
+            print_git_file($$files_to_add_ref[$i], $i + 1);
         }
         print "\n";
     }
     my $total_excluded = scalar(@$files_to_exclude_ref);
     if ($total_excluded) {
         print colored(get_heading("Excluded", $total_excluded), $COLOR{GREY});
-        for my $idx (0 .. $total_excluded - 1) {
-            print_git_file($$files_to_exclude_ref[$idx], $idx + 1,
-                           $COLOR{YELLOW});
+        for my $i (0 .. $total_excluded - 1) {
+            print_git_file($$files_to_exclude_ref[$i], $i + 1, $COLOR{YELLOW});
         }
         print "\n";
     }
