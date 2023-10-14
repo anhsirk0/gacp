@@ -9,6 +9,9 @@ git add, commit and push in one go.
 gacp is a wrapper around `git` to make commiting and pushing files convenient.
 > works only on unix-like systems (Linux, BSD, MacOS)
 
+## Screenshot
+![screenshot.jpg](https://codeberg.org/anhsirk0/gacp/raw/branch/main/screenshot.jpg)
+
 ## Installation
 Its just a perl script
 download it make it executable and put somewhere in your $PATH
