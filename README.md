@@ -10,7 +10,7 @@ gacp is a wrapper around `git` to make commiting and pushing files convenient.
 > works only on unix-like systems (Linux, BSD, MacOS)
 
 ## Screenshot
-![screenshot.jpg](https://codeberg.org/anhsirk0/gacp/raw/branch/main/screenshot.jpg)
+![screenshot.png](https://codeberg.org/anhsirk0/gacp/raw/branch/main/screenshot.png)
 
 ## Installation
 Its just a perl script
