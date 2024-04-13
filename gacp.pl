@@ -192,6 +192,7 @@ sub git_add_commit_push {
         push(@commit_cmd, "-m");
         push(@commit_cmd, $COMMIT_MESSAGE);
     }
+    $prev_return = system(@commit_cmd);
     return unless ($prev_return eq "0" && !$DONT_PUSH);
     system("git push");
 }
