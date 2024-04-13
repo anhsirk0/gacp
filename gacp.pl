@@ -187,13 +187,12 @@ sub git_add_commit_push {
     my $prev_return = system("git add " . $added_files);
     return unless ($prev_return eq "0");
 
-    my $commit_cmd = "git commit";
+    my @commit_cmd = ("git", "commit");
     unless ($COMMIT_MESSAGE eq $USE_EDITOR_MSG) {
-        $commit_cmd .= ' -m "' . qq{$COMMIT_MESSAGE} . '"';
+        push(@commit_cmd, "-m");
+        push(@commit_cmd, $COMMIT_MESSAGE);
     }
-    $prev_return = system($commit_cmd);
     return unless ($prev_return eq "0" && !$DONT_PUSH);
-
     system("git push");
 }
 
